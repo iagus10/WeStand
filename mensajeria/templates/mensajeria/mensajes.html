@@ -1,0 +1,495 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<style>
+/* Grupo de mini fotos de conversación tipo Instagram */
+.grupo-fotos {
+    position: relative;
+    width: 45px;
+    height: 45px;
+}
+
+.grupo-fotos img,
+.grupo-fotos i {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    object-fit: cover;
+    border: 2px solid white;
+    border-radius: 50%;
+}
+
+.grupo-fotos img:nth-child(1),
+.grupo-fotos i:nth-child(1) {
+    top: 0;
+    left: 0;
+}
+.grupo-fotos img:nth-child(2),
+.grupo-fotos i:nth-child(2) {
+    top: 0;
+    right: 0;
+}
+.grupo-fotos img:nth-child(3),
+.grupo-fotos i:nth-child(3) {
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Mini foto normal */
+.mini-foto {
+    width: 22px;
+    height: 22px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+/* Icono de persona si no tiene foto */
+.mini-foto-icon {
+    font-size: 1.5rem;
+    position: absolute;
+    color: #6c757d;
+    width: 22px;
+    height: 22px;
+}
+.bubble-right {
+    background-color: #0d6efd;
+    color: white;
+    border-radius: 15px 15px 0 15px;
+    padding: 10px;
+    max-width: 70%;
+}
+
+.bubble-left {
+    background-color: #e9ecef;
+    color: black;
+    border-radius: 15px 15px 15px 0;
+    padding: 10px;
+    max-width: 70%;
+}
+
+</style>
+
+
+<div class="container mt-5">
+    <div class="row">
+        <!-- Conversaciones -->
+        <div class="col-md-4 border-end">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Conversaciones</h5>
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#nuevaConversacionModal">
+                    Nueva
+                </button>
+            </div>
+            <div style="max-height: 70vh; overflow-y: auto;">
+                <ul class="list-group" id="listaConversaciones">
+                    {% for conversacion in conversaciones %}
+                        <li id="conversacion-{{ conversacion.id }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center" onclick="mostrarMensajes({{ conversacion.id }})" style="cursor: pointer;">
+                                {% with conversacion.participantes.count as num_participantes %}
+                                    {% if num_participantes > 2 %}
+                                        <div class="grupo-fotos me-2">
+                                            {% for participante in conversacion.participantes.all|slice:":3" %}
+                                                {% if participante.foto_perfil %}
+                                                    <img src="{{ participante.foto_perfil.url }}" class="rounded-circle mini-foto">
+                                                {% else %}
+                                                    <i class="bi bi-person-circle mini-foto-icon"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        <strong>
+                                            {{ conversacion.nombre_grupo|default:"Grupo" }}
+                                        </strong>
+                                    {% else %}
+                                        {% for participante in conversacion.participantes.all %}
+                                            {% if participante != request.user %}
+                                                {% if participante.foto_perfil %}
+                                                    <img src="{{ participante.foto_perfil.url }}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                                {% else %}
+                                                    <i class="bi bi-person-circle me-2" style="font-size: 2rem;"></i>
+                                                {% endif %}
+                                                <strong>{{ participante.username }}</strong>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                            <button class="btn btn-sm btn-danger delete-conversation" data-id="{{ conversacion.id }}" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal">X</button>
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item">No tienes conversaciones.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Mensajes -->
+        <div class="col-md-8" id="panelMensajes">
+            <h5 class="text-muted">Selecciona una conversación</h5>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nueva Conversación -->
+<div class="modal fade" id="nuevaConversacionModal" tabindex="-1" aria-labelledby="nuevaConversacionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form id="formCrearConversacion" method="post">
+        {% csrf_token %}
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nueva Conversación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="buscadorUsuarios" class="form-control mb-3" placeholder="Buscar usuario...">
+
+                <h6 class="mt-3">Usuarios que sigues</h6>
+                <div id="usuariosSeguidos" class="list-group mb-4">
+                    {% for usuario in usuarios_seguidos %}
+                        <label class="list-group-item d-flex align-items-center">
+                            <input class="form-check-input me-2" type="checkbox" name="usuarios" value="{{ usuario.id }}">
+                            {% if usuario.foto_perfil %}
+                                <img src="{{ usuario.foto_perfil.url }}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                            {% else %}
+                                <i class="bi bi-person-circle me-2" style="font-size: 2rem;"></i>
+                            {% endif %}
+                            {{ usuario.username }}
+                        </label>
+                    {% empty %}
+                        <p class="text-muted">No sigues a nadie todavía.</p>
+                    {% endfor %}
+                </div>
+
+                <h6>Otros usuarios</h6>
+                <div id="usuariosAleatorios" class="list-group">
+                    {% for usuario in usuarios_aleatorios %}
+                        <label class="list-group-item d-flex align-items-center">
+                            <input class="form-check-input me-2" type="checkbox" name="usuarios" value="{{ usuario.id }}">
+                            {% if usuario.foto_perfil %}
+                                <img src="{{ usuario.foto_perfil.url }}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                            {% else %}
+                                <i class="bi bi-person-circle me-2" style="font-size: 2rem;"></i>
+                            {% endif %}
+                            {{ usuario.username }}
+                        </label>
+                    {% endfor %}
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Crear Conversación</button>
+            </div>
+        </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Confirmar Salida -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form id="formEliminarConversacion" method="post">
+      {% csrf_token %}
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Salir de la conversación</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          ¿Seguro que quieres salir de esta conversación?
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Salir</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<script>
+const offsets = {};
+let cargandoMas = false;
+const buscador = document.getElementById('buscadorUsuarios');
+let timeout = null;
+
+// Buscar usuarios mientras escribes
+buscador.addEventListener('input', function() {
+    clearTimeout(timeout);
+    timeout = setTimeout(realizarBusqueda, 300);
+});
+
+buscador.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        realizarBusqueda(true);
+    }
+});
+
+function realizarBusqueda(forzado = false) {
+    const filter = buscador.value.toLowerCase();
+    let usuariosLocales = document.querySelectorAll('#usuariosSeguidos label, #usuariosAleatorios label');
+
+    if (filter.length === 0) {
+        usuariosLocales.forEach(function(usuario) {
+            usuario.style.display = '';
+        });
+        return;
+    }
+
+    let encontrado = false;
+    usuariosLocales.forEach(function(usuario) {
+        if (usuario.textContent.toLowerCase().includes(filter)) {
+            usuario.style.display = '';
+            encontrado = true;
+        } else {
+            usuario.style.display = 'none';
+        }
+    });
+
+    if (!encontrado || forzado) {
+        const seleccionados = Array.from(document.querySelectorAll('#usuariosSeguidos input[name="usuarios"]:checked, #usuariosAleatorios input[name="usuarios"]:checked'))
+            .map(input => input.value);
+
+        fetch(`/mensajeria/buscar_usuarios/?q=${filter}`)
+            .then(response => response.json())
+            .then(data => {
+                let usuariosAleatorios = document.getElementById('usuariosAleatorios');
+                usuariosAleatorios.innerHTML = '';
+
+                if (data.length > 0) {
+                    data.forEach(function(usuario) {
+                        const checked = seleccionados.includes(String(usuario.id)) ? 'checked' : '';
+                        usuariosAleatorios.innerHTML += `
+                            <label class="list-group-item d-flex align-items-center">
+                                <input class="form-check-input me-2" type="checkbox" name="usuarios" value="${usuario.id}" ${checked}>
+                                ${
+                                    usuario.foto_perfil
+                                    ? `<img src="${usuario.foto_perfil}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">`
+                                    : `<i class="bi bi-person-circle me-2" style="font-size: 2rem;"></i>`
+                                }
+                                ${usuario.username}
+                            </label>`;
+                    });
+                } else {
+                    usuariosAleatorios.innerHTML = `<div class="text-center text-muted py-2">No se encontraron usuarios.</div>`;
+                }
+            });
+    }
+}
+
+
+function cargarMensajesAdicionales(conversacionId) {
+    if (cargandoMas) return;
+    cargandoMas = true;
+
+    // Asegura que la clave esté creada
+    if (!(conversacionId in offsets)) {
+        offsets[conversacionId] = 5;
+    }
+
+    const offsetActual = offsets[conversacionId];
+
+    fetch(`/mensajeria/${conversacionId}/?offset=${offsetActual}`)
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            const nuevosMensajes = doc.querySelector('#contenedorMensajes');
+
+            if (nuevosMensajes && nuevosMensajes.innerHTML.trim()) {
+                const contenedor = document.getElementById('contenedorMensajes');
+                contenedor.insertAdjacentHTML('afterbegin', nuevosMensajes.innerHTML);
+                offsets[conversacionId] += 5;
+            } else {
+                const btn = document.getElementById('cargarMasBtn');
+                const noMas = document.getElementById('noMasMensajes');
+                if (btn) btn.style.display = 'none';
+                if (noMas) noMas.style.display = 'block';
+            }
+
+            cargandoMas = false;
+        })
+        .catch(err => {
+            console.error("Error al cargar más mensajes:", err);
+            cargandoMas = false;
+        });
+}
+
+
+// Mostrar mensajes al hacer clic en una conversación
+function mostrarMensajes(conversacionId) {
+    const panel = document.getElementById('panelMensajes');
+    panel.innerHTML = '<div class="text-center py-5"><div class="spinner-border" role="status"></div><p class="mt-2">Cargando mensajes...</p></div>';
+
+    offsets[conversacionId] = 5;
+
+    fetch(`/mensajeria/${conversacionId}/`)
+        .then(response => response.text())
+        .then(html => {
+            panel.innerHTML = html + `
+                <form id="formEnviarMensaje" class="mt-3">
+                    <div class="input-group">
+                        <input type="hidden" name="conversacion_id" value="${conversacionId}">
+                        <input type="text" name="contenido" class="form-control" placeholder="Escribe tu mensaje..." required>
+                        <button type="submit" class="btn btn-primary">Enviar</button>
+                    </div>
+                </form>
+            `;
+
+            // Si no hay mensajes, mostrar No hay mensajes aún
+            if (!html.includes('bubble-left') && !html.includes('bubble-right')) {
+                const contenedorMensajes = document.getElementById('contenedorMensajes');
+                if (contenedorMensajes) {
+                    contenedorMensajes.innerHTML = `
+                        <div class="text-center text-muted py-3">No hay mensajes aún.</div>
+                    `;
+                }
+            }
+
+            // Activar botón Cargar más
+            const btnCargar = document.getElementById('cargarMasBtn');
+            if (btnCargar) {
+                btnCargar.addEventListener('click', function () {
+                    cargarMensajesAdicionales(conversacionId);
+                });
+            }
+
+            const formEnviar = document.getElementById('formEnviarMensaje');
+            formEnviar.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(formEnviar);
+
+                fetch("{% url 'mensajeria:enviar_mensaje' %}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const mensajesDiv = document.querySelector('#panelMensajes .d-flex.flex-column');
+                        mensajesDiv.innerHTML += data.mensaje_html;
+                        formEnviar.querySelector('input[name="contenido"]').value = '';
+                        panel.scrollTop = panel.scrollHeight;
+                    }
+                });
+            });
+        });
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    const formCrear = document.getElementById('formCrearConversacion');
+
+    let conversacionAEliminar = null;
+
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('delete-conversation')) {
+            event.stopPropagation();
+            conversacionAEliminar = event.target.dataset.id;
+            const formEliminar = document.getElementById('formEliminarConversacion');
+            formEliminar.action = `/mensajeria/salir/${conversacionAEliminar}/`;
+        }
+    });
+
+    const formEliminarConversacion = document.getElementById('formEliminarConversacion');
+    formEliminarConversacion.addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch(this.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                const li = document.getElementById(`conversacion-${conversacionAEliminar}`);
+                if (li) li.remove();
+                const modal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal'));
+                if (modal) modal.hide();
+                const panel = document.getElementById('panelMensajes');
+                panel.innerHTML = `<h5 class="text-muted">Selecciona una conversación</h5>`;
+            }
+        });
+    });
+
+    formCrear.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(formCrear);
+
+        fetch("{% url 'mensajeria:crear_conversacion' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const lista = document.getElementById('listaConversaciones');
+                const nuevoItem = document.createElement('li');
+                nuevoItem.className = "list-group-item list-group-item-action d-flex justify-content-between align-items-center";
+                nuevoItem.id = `conversacion-${data.conversacion_id}`;
+
+                let contenido = `
+                    <div class="d-flex align-items-center" onclick="mostrarMensajes(${data.conversacion_id})" style="cursor: pointer;">
+                `;
+
+                if (data.es_grupo) {
+                    contenido += `
+                        <div class="grupo-fotos me-2">
+                    `;
+                    data.fotos_participantes.slice(0, 3).forEach(foto => {
+                        if (foto) {
+                            contenido += `<img src="${foto}" class="rounded-circle mini-foto">`;
+                        } else {
+                            contenido += `<i class="bi bi-person-circle mini-foto-icon"></i>`;
+                        }
+                    });
+                    contenido += `</div><strong>${data.nombre_grupo}</strong>`;
+                } else {
+                    if (data.foto_participante) {
+                        contenido += `<img src="${data.foto_participante}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">`;
+                    } else {
+                        contenido += `<i class="bi bi-person-circle me-2" style="font-size: 2rem;"></i>`;
+                    }
+                    contenido += `<strong>${data.username_participante}</strong>`;
+                }
+
+                contenido += `</div>
+                    <button class="btn btn-sm btn-danger delete-conversation" data-id="${data.conversacion_id}" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal">X</button>
+                `;
+
+                nuevoItem.innerHTML = contenido;
+                lista.prepend(nuevoItem);
+
+                nuevoItem.querySelector('.delete-conversation').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    conversacionAEliminar = this.dataset.id;
+                    const formEliminar = document.getElementById('formEliminarConversacion');
+                    formEliminar.action = `/mensajeria/salir/${conversacionAEliminar}/`;
+                });
+
+                // Cerrar modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('nuevaConversacionModal'));
+                if (modal) modal.hide();
+
+                // Limpiar búsqueda y checkboxes
+                formCrear.reset();
+            }
+        });
+    });
+});
+
+</script>
+
+{% endblock %}

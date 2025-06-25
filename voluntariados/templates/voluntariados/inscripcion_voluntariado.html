@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h3>Inscripción al voluntariado: {{ voluntariado.nombre }}</h3>
+    <p><strong>Entidad:</strong> {{ voluntariado.entidad.username }}</p>
+    <p><strong>Ubicación:</strong> {{ voluntariado.ubicacion }}</p>
+    <p><strong>Fechas:</strong> {{ voluntariado.fecha_inicio }} - {{ voluntariado.fecha_fin }}</p>
+    <p><strong>Descripción:</strong> {{ voluntariado.descripcion }}</p>
+
+    {% if voluntariado.finalizado and estado == "aceptado" %}
+        <div class="alert alert-success alert-static mt-3">
+            El voluntariado ha <strong>finalizado</strong>. ¡Gracias por tu participación!
+        </div>
+        <a href="{% url 'voluntariado_aceptado' voluntariado.id %}" class="btn btn-outline-primary">
+            Ver detalles
+        </a>
+    {% elif voluntariado.finalizado %}
+        <div class="alert alert-danger alert-static mt-3">
+            Este voluntariado ya ha finalizado. No se pueden enviar nuevas solicitudes.
+        </div>
+    {% elif estado == "aceptado" %}
+        <div class="alert alert-success alert-static mt-3">
+            Enhorabuena, tu solicitud ha sido <strong>aceptada</strong>!
+        </div>
+        <a href="{% url 'voluntariado_aceptado' voluntariado.id %}" class="btn btn-outline-primary">
+            Ver detalles
+        </a>
+    {% elif estado == "rechazado" %}
+        <div class="alert alert-danger alert-static mt-4">
+            Tu solicitud para esta oferta de voluntariado ha sido <strong>rechazada</strong>.
+        </div>
+    {% elif estado == "pendiente" %}
+        <div class="alert alert-warning alert-static mt-4">
+            Tu solicitud está <strong>pendiente de revisión</strong>.
+        </div>
+    {% else %}
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">Confirmar inscripción</button>
+        </form>
+    {% endif %}
+
+
+
+    {% if voluntariado.latitud and voluntariado.longitud %}
+    <hr class="my-4">
+    <h5>Ubicación en el mapa:</h5>
+    <div id="mapa-voluntariado" style="height: 400px; border: 1px solid #ccc; border-radius: 8px;"></div>
+    {% endif %}
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<!-- Leaflet CSS sin SRI -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<!-- Leaflet JS sin SRI -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+{% if voluntariado.latitud and voluntariado.longitud %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const map = L.map('mapa-voluntariado').setView([{{ voluntariado.latitud }}, {{ voluntariado.longitud }}], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    L.marker([{{ voluntariado.latitud }}, {{ voluntariado.longitud }}]).addTo(map)
+        .bindPopup("{{ voluntariado.ubicacion|escapejs }}")
+        .openPopup();
+});
+</script>
+{% endif %}
+{% endblock %}
+

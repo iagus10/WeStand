@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load form_filters %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white d-flex align-items-center">
+            <i class="bi bi-journal-plus me-2"></i>
+            <h4 class="mb-0">Añadir Nueva Experiencia</h4>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label for="id_titulo" class="form-label">Título</label>
+                    {{ form.titulo|add_class:"form-control" }}
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_organizacion" class="form-label">Organización</label>
+                    {{ form.organizacion }}
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_descripcion" class="form-label">Descripción</label>
+                    {{ form.descripcion|add_class:"form-control" }}
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_fecha_inicio" class="form-label">Fecha de Inicio</label>
+                        {{ form.fecha_inicio|add_class:"form-control" }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="id_fecha_fin" class="form-label">Fecha de Fin</label>
+                        {{ form.fecha_fin|add_class:"form-control" }}
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'perfil' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left-circle"></i> Volver al perfil
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Guardar Experiencia
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const $orgInput = $('#id_organizacion');
+    const raw = $orgInput.data('options') || '';
+    const opciones = raw.split(',').map(opt => opt.trim()).filter(Boolean);
+
+    $orgInput.select2({
+        tags: true,
+        placeholder: "Escribe o selecciona una organización",
+        width: '100%',
+        allowClear: true,
+        theme: 'bootstrap-5'  // Usa el tema Bootstrap 
+    });
+
+    // Mantener el valor al hacer submit
+    $('form').on('submit', function () {
+        const val = $orgInput.val();
+        $orgInput.val(val);
+    });
+});
+</script>
+{% endblock %}

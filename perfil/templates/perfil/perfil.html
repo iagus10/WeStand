@@ -1,0 +1,1129 @@
+{% extends "base.html" %}
+{% load static %}
+{% load entidad_tags %}
+{% block extra_css %}
+
+<style>
+    .profile-image-container {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    .profile-image {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 3px solid #eee;
+        transition: opacity 0.3s ease;
+    }
+
+    .profile-image-container:hover .profile-image {
+        opacity: 0.5;
+    }
+
+    .profile-hover-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-weight: bold;
+        font-size: 14px;
+        display: none;
+        pointer-events: none;
+    }
+
+    .profile-image-container:hover .profile-hover-text {
+        display: block;
+    }
+
+    input[type="file"] {
+        display: none;
+    }
+
+    .perfil-foto-hover {
+        cursor: pointer;
+    }
+
+    .perfil-foto-hover .overlay-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        opacity: 0;
+        transition: 0.3s ease-in-out;
+        background: rgba(0, 0, 0, 0.242);
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+
+
+        color: #fff;
+        text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    .perfil-foto-hover:hover .overlay-text {
+        opacity: 1;
+    }
+
+    .experiencia-card {
+        position: relative;
+        transition: all 0.3s ease;
+    }
+
+    .experiencia-card:hover {
+        transform: scale(1.02);
+        opacity: 0.9;
+    }
+
+    /* .experiencia-hover-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 10px;
+        font-weight: 500;
+        font-size: 14px;
+        display: none;
+        pointer-events: none;
+    }*/
+
+    .experiencia-hover-text {
+        position: absolute;
+        bottom: 15px;
+        right: 15px;
+        background-color: rgba(0, 0, 0, 0.1);
+        /* fondo oscuro translúcido */
+        color: rgb(0, 0, 0) !important;
+        padding: 6px 12px;
+        border-radius: 10px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        transform: scale(0.95);
+    }
+
+    .experiencia-hover-text * {
+        color: rgb(0, 0, 0) !important;
+
+    }
+
+    .experiencia-card:hover .experiencia-hover-text {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    .delete-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 2;
+    }
+
+    .delete-btn form {
+        display: inline;
+    }
+
+    .editable-field .form-control.edit-input {
+        margin-top: 0.5rem;
+        transition: opacity 0.3s ease;
+    }
+
+    .editable-field .form-control.edit-input.d-none {
+        opacity: 0;
+        height: 0;
+        padding: 0;
+        margin: 0;
+        border: none;
+    }
+
+ #seccion-experiencias,#seccion-publicaciones {
+    
+    transition: opacity 0.3s ease-in-out;
+}
+
+.perfil-banner-hover {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    height: 200px;
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.perfil-banner-hover img,
+.perfil-banner-hover .banner-placeholder {
+    width: 100%;
+    height: 100%;
+    object-fit: cover contain;  /* aqui ajusto el banner */
+    object-position: center;
+    display: block;
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.overlay-banner-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    transition: opacity 0.3s ease;
+    gap: 6px;
+    text-align: center;
+    padding: 10px;
+    pointer-events: none;
+}
+
+.perfil-banner-hover:hover .overlay-banner-text {
+    opacity: 1;
+}
+.solicitudes-btn {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 3;
+    background-color: rgba(255, 255, 255, 0.85);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    transition: background-color 0.3s ease;
+}
+
+.solicitudes-btn:hover {
+    background-color: rgba(230, 230, 230, 0.95);
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mt-5">
+        <h2 class="text-center flex-grow-1">Mi perfil</h2>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+            </button>
+        </form>
+    </div>
+    
+    <div class="card p-4 shadow-lg rounded-3 mt-4">
+
+        <div class="position-relative mb-4">
+            <form method="post" enctype="multipart/form-data" class="mb-3">
+                {% csrf_token %}
+                <label for="banner" class="perfil-banner-hover d-block rounded">
+                    {% if user.banner %}
+                        <img src="{{ user.banner.url }}" alt="Banner">
+                        <div class="overlay-banner-text">
+                            <i class="bi bi-camera"></i>
+                            <span>Cambiar banner</span>
+                        </div>
+                    {% else %}
+                        <div class="banner-placeholder bg-secondary position-relative">
+                            <div class="overlay-banner-text" style="opacity:1">
+                                <i class="bi bi-camera"></i>
+                                <span>Añadir banner</span>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <div class="overlay-banner-text">
+                        <i class="bi bi-camera"></i>
+                        <span>{% if user.banner %}Cambiar banner{% else %}Añadir banner{% endif %}</span>
+                    </div>
+                </label>
+                <input type="file" name="banner" id="banner" accept="image/*" onchange="this.form.submit()" hidden>
+            </form>
+
+            {% if user.banner %}
+            <form method="post" class="position-absolute top-0 end-0 m-2">
+                {% csrf_token %}
+                <button type="submit" name="eliminar_banner" class="btn btn-sm btn-danger">Eliminar banner</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <div class="row align-items-center">
+            <div class="col-md-3 text-center">
+                <form method="post" enctype="multipart/form-data" class="mt-3">
+                    {% csrf_token %}
+                    <label for="foto_perfil" class="perfil-foto-hover position-relative d-inline-block">
+                        {% if user.foto_perfil %}
+                        <img src="{{ user.foto_perfil.url }}" class="profile-image" alt="Foto de perfil">
+                        {% else %}
+                        <i class="bi bi-person-circle fs-1 text-muted"></i>
+                        {% endif %}
+                        <div class="overlay-text">
+                            <i class="fas fa-camera fa-lg mb-1"></i>
+                            <span>Cambiar imagen</span>
+                        </div>
+                    </label>
+                    <input type="file" name="foto_perfil" id="foto_perfil" accept="image/*"
+                        onchange="this.form.submit()">
+                </form>
+
+                <form method="post" class="mt-2">
+                    {% csrf_token %}
+                    <button type="submit" name="eliminar_foto" class="btn btn-danger">Eliminar Foto</button>
+                </form>
+            </div>
+
+            <div class="col-md-9">
+                <h3>{{ user.first_name }} {{ user.last_name }}</h3>
+
+                <!-- Nivel del usuario -->
+                {% if user.user_type == 'volunteer' %}
+                    <div class="mb-3">
+                        <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
+                            Nivel: {{ user.nivel }} - {{ user.experiencia }} XP
+                        </span>
+                    </div>
+                {% endif %}
+
+                <form method="post" id="editarPerfilForm" class="mt-3">
+                    {% csrf_token %}
+
+                    <div class="editable-field mb-3">
+                        <label class="form-label">Biografía: </label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <p id="biografiaTexto" class="mb-0 display-text flex-grow-1">
+                                {{ user.biografia|default:"No ha escrito una biografía aún." }}
+                            </p>
+                            <i class="bi bi-pencil-fill edit-icon ms-2" data-target="biografia"></i>
+                        </div>
+                        <textarea id="biografia" name="biografia"
+                            class="form-control edit-input d-none mt-2">{{ user.biografia }}</textarea>
+                    </div>
+
+                    <div class="editable-field mb-3">
+                        <label class="form-label">Ubicación: </label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <p id="ubicacionTexto" class="mb-0 display-text flex-grow-1">
+                                {{ user.ubicacion|default:"Sin ubicación" }}
+                            </p>
+                            <i class="bi bi-pencil-fill edit-icon ms-2" data-target="ubicacion"></i>
+                        </div>
+                        <input id="ubicacion" type="text" name="ubicacion" class="form-control edit-input d-none mt-2"
+                            value="{{ user.ubicacion }}">
+                    </div>
+
+                    <div class="editable-field mb-3">
+                        <label class="form-label">Disponibilidad: </label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <p id="disponibilidadTexto" class="mb-0 display-text flex-grow-1">
+                                {{ user.disponibilidad|default:"No ha especificado disponibilidad" }}
+                            </p>
+                            <i class="bi bi-pencil-fill edit-icon ms-2" data-target="disponibilidad"></i>
+                        </div>
+                        <input id="disponibilidad" type="text" name="disponibilidad"
+                            class="form-control edit-input d-none mt-2" value="{{ user.disponibilidad }}">
+                    </div>
+
+                    {% if user.user_type == 'volunteer' %}
+                        <div class="mt-4">
+                            <h4>Áreas de Interés</h4>
+                            <ul>
+                                {% for categoria in preferencias_usuario %}
+                                    <li>{{ categoria.categoria.nombre }}</li>
+                                {% empty %}
+                                    <li>No ha seleccionado áreas de interés aún.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <div class="form-group mt-3">
+                            <label>Áreas de Voluntariado de Interés:</label>
+                            <div class="row">
+                                {% for categoria in categorias %}
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="categorias_voluntariado" value="{{ categoria.id }}" {% if categoria.id in preferencias_usuario_ids %}checked{% endif %}>
+                                            <label class="form-check-label">{{ categoria.nombre }}</label>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="form-group mt-4">
+                            <label>Habilidades:</label>
+                            <button type="button" class="btn btn-outline-dark" data-bs-toggle="modal" data-bs-target="#habilidadesModal">
+                                Editar habilidades
+                            </button>
+
+                            <ul class="mt-3" id="habilidadesSeleccionadas">
+                                {% for habilidad in habilidades %}
+                                    {% if habilidad.id in habilidades_usuario_ids %}
+                                        <li>{{ habilidad.nombre }}</li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+
+                    <button type="submit" name="guardar_perfil" value="1" class="btn btn-success mt-3">Guardar Cambios</button>
+                </form>
+
+                <!-- MODAL habilidades (fuera del form principal) -->
+                <div class="modal fade" id="habilidadesModal" tabindex="-1" aria-labelledby="habilidadesModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content shadow">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="habilidadesModalLabel">Selecciona tus habilidades</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                            </div>
+                            <form method="post" action="{% url 'perfil' %}">
+                                {% csrf_token %}
+                                <div class="modal-body">
+                                    <div class="row">
+                                        {% for habilidad in habilidades %}
+                                        <div class="col-md-4">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="habilidades" value="{{ habilidad.id }}"
+                                                    {% if habilidad.id in habilidades_usuario_ids %}checked{% endif %}>
+                                                <label class="form-check-label">{{ habilidad.nombre }}</label>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="submit" name="guardar_habilidades" class="btn btn-primary">Guardar habilidades</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Botones de conmutación -->
+<div class="container mt-5">
+    <div class="text-center mb-4">
+        <div class="btn-group" role="group">
+            {% if user.user_type == 'organization' %}
+                <button id="btn-ver-ofertas" type="button" class="btn btn-outline-primary active">Ofertas</button>
+            {% else %}
+                <button id="btn-ver-experiencias" type="button" class="btn btn-outline-primary active">Experiencia</button>
+            {% endif %}
+            <button id="btn-ver-publicaciones" type="button" class="btn btn-outline-primary">Publicaciones</button>
+            <button id="btn-ver-valoraciones" type="button" class="btn btn-outline-primary">Valoraciones</button>
+        </div>
+    </div>
+
+    <div id="seccion-valoraciones" class="seccion-conmutada seccion-oculta">
+        <h3 class="text-center mb-4">Valoraciones recibidas</h3>
+
+        {% if media_valoraciones %}
+        <p class="text-center text-muted mb-4">
+            Nota media: 
+            <strong>{{ media_valoraciones|floatformat:1 }}/5</strong>
+            ({{ total_valoraciones }} valoración{{ total_valoraciones|pluralize }})
+            <span class="text-warning ms-2">
+                {% for i in "12345"|make_list %}
+                    {% if forloop.counter <= media_valoraciones %}
+                        <i class="bi bi-star-fill"></i>
+                    {% elif forloop.counter < media_valoraciones|add:"1" %}
+                        <i class="bi bi-star-half"></i>
+                    {% else %}
+                        <i class="bi bi-star text-secondary"></i>
+                    {% endif %}
+                {% endfor %}
+            </span>
+        </p>
+        {% endif %}
+
+        {% if valoraciones %}
+        <ul class="list-group">
+            {% for v in valoraciones %}
+            <li class="list-group-item d-flex align-items-start">
+                {% if v.autor.foto_perfil %}
+                    <a href="{% url 'ver_perfil' v.autor.username %}">
+                        <img src="{{ v.autor.foto_perfil.url }}" class="rounded-circle me-3" style="width: 45px; height: 45px; object-fit: cover;">
+                    </a>
+                {% else %}
+                    <a href="{% url 'ver_perfil' v.autor.username %}" class="me-3">
+                        <i class="bi bi-person-circle fs-3 text-muted"></i>
+                    </a>
+                {% endif %}
+
+                <div>
+                    <a href="{% url 'ver_perfil' v.autor.username %}" class="fw-semibold text-dark text-decoration-none">
+                        {{ v.autor.username }}
+                    </a>
+
+                    <div class="text-warning mb-1">
+                        {% for i in "12345"|make_list %}
+                            {% if forloop.counter <= v.estrellas %}
+                                <i class="bi bi-star-fill"></i>
+                            {% else %}
+                                <i class="bi bi-star text-secondary"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    {% if v.comentario %}
+                        <p class="mb-0 text-muted">{{ v.comentario }}</p>
+                    {% endif %}
+
+                    <p class="mb-1 small text-muted">
+                        Valoró el voluntariado: 
+                        <strong>
+                            {% if user == v.voluntariado.entidad %}
+                            <a href="{% url 'ver_solicitudes' v.voluntariado.id %}" class="text-decoration-none">
+                                {{ v.voluntariado.nombre }}
+                            </a>
+                            {% else %}
+                            {{ v.voluntariado.nombre }}
+                            {% endif %}
+                        </strong>
+                    </p>
+
+                    <p class="text-muted small">{{ v.fecha|date:"d M Y - H:i" }}</p>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-center text-muted mt-4">Aún no has recibido valoraciones.</p>
+        {% endif %}
+    </div>
+
+
+
+    <!-- Sección de Experiencia / Ofertas -->
+    <div id="seccion-experiencias" class="seccion-conmutada seccion-visible">
+        <h3 class="text-center mb-4">
+            {% if user.user_type == 'organization' %}
+                Ofertas de Voluntariado
+            {% else %}
+                Experiencia
+            {% endif %}
+        </h3>
+
+        <div class="row">
+            {% if user.user_type == 'organization' %}
+                {% for oferta in ofertas %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 shadow-sm experiencia-card position-relative overflow-hidden" id="oferta-{{ oferta.id }}">
+                           <a href="{% url 'ver_solicitudes' oferta.id %}" class="text-decoration-none text-dark w-100">
+                                <div class="experiencia-hover-text text-dark fw-semibold mt-2">
+                                    <i class="bi bi-people me-1"></i> Ver solicitudes
+                                </div>
+                            </a>
+
+                            <div class="position-absolute top-0 end-0 p-2 z-3">
+                                <button type="button" class="btn btn-danger btn-sm rounded-circle eliminar-oferta"
+                                    data-id="{{ oferta.id }}" data-bs-toggle="modal" data-bs-target="#confirmDeleteModalOferta">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <a href="{% url 'ver_solicitudes' oferta.id %}" class="text-decoration-none text-dark w-100">
+                                <div class="card-body d-flex align-items-center experiencia-hover-wrapper">
+                                    <div class="me-3">
+                                        {% if oferta.foto %}
+                                            <img src="{{ oferta.foto.url }}" alt="Imagen" class="rounded border"
+                                                style="width: 60px; height: 60px; object-fit: cover;">
+                                        {% else %}
+                                            <i class="bi bi-briefcase-fill fs-1 text-muted"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <h5 class="card-title mb-1">{{ oferta.titulo }}</h5>
+                                        <p class="card-text">{{ oferta.descripcion|default:"Sin descripción." }}</p>
+                                        <p class="card-text text-muted small">
+                                            <i class="bi bi-calendar-event"></i>
+                                            {{ oferta.fecha_inicio }} -
+                                            {% if oferta.fecha_fin %}
+                                                {{ oferta.fecha_fin }}
+                                            {% else %}
+                                                Sin fecha de fin
+                                            {% endif %}
+                                        </p>
+                                        <div class="experiencia-hover-text text-dark fw-semibold mt-2">
+                                            <i class="bi bi-people me-1"></i> Ver solicitudes
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-center">Aún no has publicado ofertas de voluntariado.</p>
+                {% endfor %}
+            {% else %}
+                {% for experiencia in experiencias %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 shadow-sm experiencia-card position-relative overflow-hidden">
+                            <div class="position-absolute top-0 end-0 p-2 z-3">
+                                <button type="button" class="btn btn-danger btn-sm rounded-circle eliminar-btn"
+                                    data-bs-toggle="modal" data-bs-target="#confirmDeleteModal" data-id="{{ experiencia.id }}">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <a href="{% url 'editar_experiencia' experiencia.id %}" class="text-decoration-none text-dark w-100">
+                                <div class="card-body d-flex align-items-center experiencia-hover-wrapper">
+                                    <div class="me-3">
+                                        {% for e in entidades %}
+                                            {% if e.username == experiencia.organizacion %}
+                                                {% if e.foto_perfil %}
+                                                    <img src="{{ e.foto_perfil.url }}" class="rounded-circle border"
+                                                        style="width: 60px; height: 60px; object-fit: cover;" alt="{{ e.username }}">
+                                                {% else %}
+                                                    <i class="bi bi-building fs-1 text-muted"></i>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <div>
+                                        <h5 class="card-title mb-1">{{ experiencia.titulo }}</h5>
+                                        <h6 class="card-subtitle text-muted mb-2">@{{ experiencia.organizacion }}</h6>
+                                        <p class="card-text">{{ experiencia.descripcion|default:"Sin descripción." }}</p>
+                                        <p class="card-text text-muted small">
+                                            <i class="bi bi-calendar-event"></i>
+                                            {{ experiencia.fecha_inicio }} -
+                                            {% if experiencia.fecha_fin %}
+                                                {{ experiencia.fecha_fin }}
+                                            {% else %}
+                                                Actualidad
+                                            {% endif %}
+                                        </p>
+                                        <div class="experiencia-hover-text text-primary fw-semibold mt-2">
+                                            <i class="bi bi-pencil me-1"></i> Editar experiencia
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-center">Aún no has añadido experiencias.</p>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        {% if user.user_type != 'organization' %}
+            <div class="mt-4 text-center">
+                <a href="{% url 'agregar_experiencia' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-plus-circle"></i> Añadir Experiencia
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Sección de publicaciones -->
+    <div id="seccion-publicaciones" class="seccion-conmutada seccion-oculta">
+        <h3 class="text-center mb-4">Publicaciones</h3>
+
+        {% for pub in publicaciones %}
+        <div class="card mb-4 shadow-sm" id="publicacion-{{ pub.id }}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="d-flex align-items-center">
+                        {% if pub.usuario.foto_perfil %}
+                        <img src="{{ pub.usuario.foto_perfil.url }}" class="rounded-circle me-2"
+                            style="width: 40px; height: 40px; object-fit: cover;">
+                        {% else %}
+                        <i class="bi bi-person-circle fs-4 me-2"></i>
+                        {% endif %}
+                        <span class="fw-bold">{{ pub.usuario.username }}</span>
+                    </div>
+                    <button class="btn btn-light border rounded-circle delete-post" title="Eliminar publicación"
+                        data-id="{{ pub.id }}" data-bs-toggle="modal" data-bs-target="#confirmDeleteModalPub">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+
+                <p class="card-text mt-2">{{ pub.contenido|linebreaks }}</p>
+
+                {% if pub.imagen %}
+                <img src="{{ pub.imagen.url }}" alt="Imagen" class="img-fluid rounded mb-2"
+                    style="max-height: 400px; object-fit: contain;">
+                {% endif %}
+
+                <p class="text-muted small mt-1 fecha-relativa" data-fecha="{{ pub.fecha_creacion|date:'c' }}">
+                    {{ pub.fecha_creacion|date:"d M Y - H:i" }}
+                </p>
+
+                <!-- Botones y contadores -->
+                <div class="d-flex gap-5 align-items-center mt-3">
+                    <div class="text-center">
+                        <button class="btn btn-outline-danger like-btn" data-id="{{ pub.id }}">
+                            <i
+                                class="bi {% if pub.id in publicaciones_likes_usuario %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                            Me gusta
+                        </button>
+                        <div id="like-count-{{ pub.id }}" class="small mt-1">{{ pub.megusta_set.count }} me gusta
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <button class="btn btn-outline-secondary toggle-comment" data-id="{{ pub.id }}">
+                            <i class="bi bi-chat-dots"></i> Comentar
+                        </button>
+                        <div id="comentario-count-{{ pub.id }}" class="small mt-1">{{ pub.comentario_set.count }}
+                            comentarios</div>
+                    </div>
+                </div>
+
+                <!-- Comentarios -->
+                <div class="comment-section mt-3" id="comment-section-{{ pub.id }}" style="display: none;">
+                    <textarea class="form-control mb-2" placeholder="Escribe un comentario..."
+                        id="comentario-textarea-{{ pub.id }}"></textarea>
+                    <button class="btn btn-primary enviar-comentario" data-id="{{ pub.id }}">Enviar</button>
+
+                    <div class="mt-4">
+                        {% for comentario in pub.comentario_set.all %}
+                            <div class="d-flex align-items-start mb-2" id="comentario-{{ comentario.id }}">
+                                
+                                {% if comentario.usuario.foto_perfil %}
+                                    {% if comentario.usuario == user %}
+                                    <span>
+                                        <img src="{{ comentario.usuario.foto_perfil.url }}" alt="foto" class="rounded-circle me-2"
+                                            style="width: 40px; height: 40px; object-fit: cover;">
+                                    </span>
+                                    {% else %}
+                                    <a href="{% url 'ver_perfil' comentario.usuario.username %}">
+                                        <img src="{{ comentario.usuario.foto_perfil.url }}" alt="foto" class="rounded-circle me-2"
+                                            style="width: 40px; height: 40px; object-fit: cover;">
+                                    </a>
+                                    {% endif %}
+                                {% else %}
+                                    {% if comentario.usuario == user %}
+                                    <span><i class="bi bi-person-circle fs-4 me-2"></i></span>
+                                    {% else %}
+                                    <a href="{% url 'ver_perfil' comentario.usuario.username %}"><i class="bi bi-person-circle fs-4 me-2"></i></a>
+                                    {% endif %}
+                                {% endif %}
+
+                                <div class="flex-grow-1">
+                                    {% if comentario.usuario == user %}
+                                    <span class="fw-bold">{{ comentario.usuario.username }}</span>
+                                    {% else %}
+                                    <a href="{% url 'ver_perfil' comentario.usuario.username %}" class="text-dark fw-bold text-decoration-none">
+                                        {{ comentario.usuario.username }}
+                                    </a>
+                                    {% endif %}
+                                    : {{ comentario.contenido }}
+
+                                    <div class="text-muted small mt-1 fecha-relativa"
+                                        data-fecha="{{ comentario.fecha|date:'c' }}">
+                                        {{ comentario.fecha|date:"d M Y - H:i" }}
+                                    </div>
+                                </div>
+
+                                {% if comentario.usuario == user or pub.usuario == user %}
+                                <button class="btn btn-light border rounded-circle delete-comment ms-2"
+                                    title="Eliminar comentario" data-id="{{ comentario.id }}" data-bs-toggle="modal"
+                                    data-bs-target="#confirmDeleteComentarioModal">
+                                    <i class="bi bi-dash-lg"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-center">Aún no has publicado nada.</p>
+        {% endfor %}
+    </div>
+</div>
+<!-- Modal para eliminar experiencia -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar experiencia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                ¿Estás seguro de que deseas eliminar esta experiencia?
+            </div>
+            <div class="modal-footer">
+                <form method="post" id="modalDeleteForm">
+                    {% csrf_token %}
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para eliminar publicación -->
+<div class="modal fade" id="confirmDeleteModalPub" tabindex="-1" aria-labelledby="confirmDeleteModalPubLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar publicación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                ¿Estás seguro de que deseas eliminar esta publicación?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para eliminar comentario -->
+<div class="modal fade" id="confirmDeleteComentarioModal" tabindex="-1"
+    aria-labelledby="confirmDeleteComentarioModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar comentario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">¿Estás seguro de que quieres eliminar este comentario?</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteCommentBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para eliminar oferta -->
+<div class="modal fade" id="confirmDeleteModalOferta" tabindex="-1" aria-labelledby="confirmDeleteModalOfertaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar oferta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                ¿Estás seguro de que deseas eliminar esta oferta de voluntariado?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+<script>dayjs.extend(dayjs_plugin_relativeTime);</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // TRANSICIÓN SUAVE
+    const btnExp = document.getElementById("btn-ver-experiencias") || document.getElementById("btn-ver-ofertas");
+    const btnPub = document.getElementById("btn-ver-publicaciones");
+    const seccionExp = document.getElementById("seccion-experiencias");
+    const seccionPub = document.getElementById("seccion-publicaciones");
+    const btnVal = document.getElementById("btn-ver-valoraciones");
+    const seccionVal = document.getElementById("seccion-valoraciones");
+
+    function mostrarSeccion(activa, todas, btnActiva, todosBotones) {
+        todas.forEach(sec => {
+            if (sec !== activa) {
+                sec.style.opacity = 0;
+                setTimeout(() => sec.style.display = "none", 300);
+            }
+        });
+        activa.style.display = "block";
+        setTimeout(() => activa.style.opacity = 1, 10);
+
+        todosBotones.forEach(btn => {
+            btn.classList.remove("active", "btn-primary");
+            btn.classList.add("btn-outline-primary");
+        });
+
+        btnActiva.classList.add("active", "btn-primary");
+        btnActiva.classList.remove("btn-outline-primary");
+    }
+
+    const todasSecciones = [seccionExp, seccionPub, seccionVal].filter(Boolean);
+    const todosBotones = [btnExp, btnPub, btnVal].filter(Boolean);
+
+    if (btnExp && seccionExp) {
+        btnExp.addEventListener("click", () => mostrarSeccion(seccionExp, todasSecciones, btnExp, todosBotones));
+    }
+    if (btnPub && seccionPub) {
+        btnPub.addEventListener("click", () => mostrarSeccion(seccionPub, todasSecciones, btnPub, todosBotones));
+    }
+    if (btnVal && seccionVal) {
+        btnVal.addEventListener("click", () => mostrarSeccion(seccionVal, todasSecciones, btnVal, todosBotones));
+    }
+
+    // Mostrar por defecto la primera activa (experiencias u ofertas)
+    if (seccionExp) {
+        mostrarSeccion(seccionExp, todasSecciones, btnExp, todosBotones);
+    }
+
+    // BOTÓN BORRAR EXPERIENCIA
+    const deleteButtons = document.querySelectorAll(".eliminar-btn");
+    const deleteForm = document.getElementById("modalDeleteForm");
+
+    deleteButtons.forEach(button => {
+        button.addEventListener("click", function () {
+            const experienciaId = this.getAttribute("data-id");
+            deleteForm.setAttribute("action", `/perfil/eliminar-experiencia/${experienciaId}/`);
+        });
+    });
+
+    // EDICIÓN DE CAMPOS
+    document.querySelectorAll(".edit-icon").forEach(icon => {
+        icon.addEventListener("click", function () {
+            const field = this.dataset.target;
+            const input = document.getElementById(field);
+            const text = document.getElementById(field + "Texto");
+
+            const isEditing = !input.classList.contains("d-none");
+            if (isEditing) {
+                input.classList.add("d-none");
+                text.classList.remove("d-none");
+            } else {
+                input.classList.remove("d-none");
+                text.classList.add("d-none");
+                input.focus();
+            }
+
+            input.onblur = () => {
+                if (input.value.trim()) {
+                    text.textContent = input.value.trim();
+                }
+                input.classList.add("d-none");
+                text.classList.remove("d-none");
+            };
+        });
+    });
+    let deleteCommentId = null;
+    let deletePostId = null;
+
+
+        // LIKE
+    document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const pubId = this.dataset.id;
+            fetch(`/publicaciones/me-gusta/${pubId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    const icon = this.querySelector('i');
+                    icon.classList.toggle('bi-heart-fill', data.liked);
+                    icon.classList.toggle('bi-heart', !data.liked);
+                    document.getElementById(`like-count-${pubId}`).textContent = `${data.total_likes} me gusta`;
+                });
+        });
+    });
+
+    // Mostrar/ocultar comentarios
+    document.querySelectorAll('.toggle-comment').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const pubId = this.dataset.id;
+            const section = document.getElementById(`comment-section-${pubId}`);
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+        });
+    });
+
+    // Enviar comentario
+    document.querySelectorAll('.enviar-comentario').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const pubId = this.dataset.id;
+            const textarea = document.getElementById(`comentario-textarea-${pubId}`);
+            const contenido = textarea.value.trim();
+
+            if (!contenido) return;
+
+            fetch(`/publicaciones/comentar/${pubId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ contenido })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.ok) {
+                        const section = document.getElementById(`comment-section-${pubId}`);
+                        const newComment = document.createElement('div');
+                        newComment.classList.add('d-flex', 'align-items-start', 'mb-2');
+                        newComment.id = `comentario-${data.id}`;
+                        newComment.innerHTML = `
+                            <a href="/perfil/">
+                                <img src="${data.foto_url || '/static/gestionLogin/img/profile.png'}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                            </a>
+                            <div class="flex-grow-1">
+                                <strong>${data.usuario}</strong>: ${data.contenido}
+                                <div class="text-muted small mt-1 fecha-relativa" data-fecha="${data.fecha}">${dayjs(data.fecha).fromNow()}</div>
+                            </div>
+                            <button class="btn btn-light border rounded-circle delete-comment ms-2" title="Eliminar comentario" data-id="${data.id}" data-bs-toggle="modal" data-bs-target="#confirmDeleteComentarioModal">
+                                <i class="bi bi-dash-lg"></i>
+                            </button>
+                        `;
+                        section.querySelector('.mt-4').appendChild(newComment);
+                        textarea.value = '';
+
+                        const contador = document.getElementById(`comentario-count-${pubId}`);
+                        if (contador) {
+                            const partes = contador.textContent.split(" ");
+                            const nuevo = parseInt(partes[0] || 0) + 1;
+                            contador.textContent = `${nuevo} comentarios`;
+                        }
+                    }
+                });
+        });
+    });
+
+    // Eliminar comentario
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.delete-comment')) {
+            deleteCommentId = e.target.closest('.delete-comment').dataset.id;
+        }
+    });
+
+    document.getElementById('confirmDeleteCommentBtn').addEventListener('click', function () {
+        if (deleteCommentId) {
+            fetch(`/publicaciones/eliminar-comentario/${deleteCommentId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            }).then(res => {
+                if (res.ok) {
+                    const commentElement = document.getElementById(`comentario-${deleteCommentId}`);
+                    if (commentElement) {
+                        const commentSection = commentElement.closest('.comment-section');
+                        const pubId = commentSection ? commentSection.id.split('-').pop() : null;
+                        if (pubId) {
+                            const contador = document.getElementById(`comentario-count-${pubId}`);
+                            if (contador) {
+                                const partes = contador.textContent.split(" ");
+                                let nuevo = Math.max(parseInt(partes[0]) - 1, 0);
+                                contador.textContent = `${nuevo} comentarios`;
+                            }
+                        }
+                        commentElement.remove();
+                    }
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteComentarioModal'));
+                    if (modal) modal.hide();
+                    deleteCommentId = null;
+                }
+            });
+        }
+    });
+
+    // Eliminar publicación
+    document.querySelectorAll('.delete-post').forEach(btn => {
+        btn.addEventListener('click', function () {
+            deletePostId = this.dataset.id;
+        });
+    });
+
+    const btnEliminarPub = document.getElementById('confirmDeleteBtn');
+    if (btnEliminarPub) {
+        btnEliminarPub.addEventListener('click', function () {
+            if (deletePostId) {
+                fetch(`/publicaciones/eliminar/${deletePostId}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                }).then(res => {
+                    if (res.ok) {
+                        document.getElementById(`publicacion-${deletePostId}`).remove();
+                        bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModalPub')).hide();
+                    }
+                });
+            }
+        });
+    }
+
+    // Eliminar oferta
+    document.querySelectorAll('.eliminar-oferta').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id = this.dataset.id;
+            const modal = document.getElementById('confirmDeleteModalOferta');
+            const confirmBtn = modal.querySelector('.btn-danger');
+
+            confirmBtn.onclick = function () {
+                fetch(`/perfil/eliminar-oferta/${id}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                }).then(res => {
+                    if (res.ok) {
+                        document.getElementById(`oferta-${id}`).remove();
+                        bootstrap.Modal.getInstance(modal).hide();
+                    }
+                });
+            };
+        });
+    });
+
+
+    // Fechas relativas en comentarios ya cargados
+    document.querySelectorAll(".fecha-relativa").forEach(el => {
+        const isoFecha = el.dataset.fecha;
+        if (isoFecha) {
+            const fecha = dayjs(isoFecha);
+            const ahora = dayjs();
+            el.textContent = ahora.diff(fecha, 'hour') < 24 ? fecha.fromNow() : fecha.format("DD MMM YYYY - HH:mm");
+        }
+    });
+
+    // Si viene un publicacion_id en la URL, mostrar publicaciones y hacer scroll
+    const params = new URLSearchParams(window.location.search);
+    const pubId = params.get('publicacion_id');
+    const tipoNotif = params.get('tipo_notificacion');
+
+    if (pubId) {
+        const publicacion = document.getElementById(`publicacion-${pubId}`);
+        if (publicacion) {
+            // Primero cambiamos a publicaciones
+            mostrarSeccion(seccionPub, seccionExp, btnPub, btnExp);
+
+            // Esperamos a que se pinte la sección
+            setTimeout(() => {
+                publicacion.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                publicacion.style.transition = 'background-color 0.5s ease';
+                publicacion.style.backgroundColor = '#d3d3d3'; // gris oscuro
+
+                // Mantener el resaltado 3 segundos
+                setTimeout(() => {
+                    publicacion.style.backgroundColor = '';
+                }, 3000);
+            }, 400);
+        }
+    }
+});
+
+</script>
+{% endblock %}

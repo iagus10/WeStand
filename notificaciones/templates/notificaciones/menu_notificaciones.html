@@ -1,0 +1,360 @@
+{% load static %}
+<style>
+.notificacion-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    gap: 10px;
+    background-color: white;
+}
+.notificacion-item.no-leida {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+.notificacion-foto {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+.notificacion-contenido {
+    flex: 1;
+}
+.notificacion-mensaje {
+    margin: 0;
+    font-size: 0.95rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;        
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.notificacion-fecha {
+    font-size: 0.75rem;
+    color: gray;
+}
+.separador-notificaciones {
+    font-weight: 600;
+    padding: 5px 10px;
+    background-color: #e9ecef;
+    border-bottom: 1px solid #ccc;
+    font-size: 0.85rem;
+    color: #444;
+}
+#contenedorNotificaciones {
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.dropdown-menu {
+    overflow: visible !important;
+}
+
+/* botones de pestañas */
+#botonesTabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.tab-btn {
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    background-color: #f5f5f5;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    position: relative; /* Importante para el ::after */
+    overflow: visible;
+}
+
+/* Normal (no activo) */
+.tab-btn::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background-color: #444; 
+    transition: all 0.3s ease;
+}
+
+/* Activo (subrayado aparece) */
+.tab-btn.active {
+    background-color: #e9ecef;
+    border-color: #bbb;
+}
+
+.tab-btn.active::after {
+    left: 0;
+    width: 100%;
+}
+.tab-btn:hover {
+    background-color: #f0f0f0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.badge-notificacion {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 10px;
+    height: 10px;
+    background-color: red;
+    border-radius: 50%;
+}
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+.animar-pulse {
+    animation: pulse 1.5s infinite;
+}
+
+.fade-out {
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+
+.fade-in {
+    opacity: 1;
+    transition: opacity 0.3s ease-in;
+}
+</style>
+
+<div id="botonesTabs">
+    <button id="btnGenerales" class="tab-btn active position-relative">
+        Generales
+        <span id="badgeGenerales" class="badge-notificacion" style="display: none;"></span>
+    </button>
+     <button id="btnSeguidores" class="tab-btn position-relative">
+        Seguidores
+        <span id="badgeSeguidores" class="badge-notificacion" style="display: none;"></span>
+    </button>
+    <button id="btnOfertas" class="tab-btn position-relative">
+        Ofertas
+        <span id="badgeOfertas" class="badge-notificacion" style="display: none;"></span>
+    </button>
+</div>
+
+<div id="contenedorNotificaciones">
+    <p class="mb-0">Cargando notificaciones...</p>
+</div>
+
+<script>
+    const defaultFotoPerfil = "{% static 'gestionLogin/img/profile.png' %}";
+
+    let todasNotificaciones = {
+        generalesNoLeidas: [],
+        generalesLeidas: [],
+        seguidoresNoLeidas: [],
+        seguidoresLeidas: [],
+        ofertasNoLeidas: [],
+        ofertasLeidas: []
+    };
+
+    function actualizarContadorNotificaciones() {
+        fetch("{% url 'contar_notificaciones' %}")
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.getElementById("contadorNotificaciones");
+                if (badge) {
+                    if (data.no_leidas > 0) {
+                        badge.style.display = "inline-block";
+                        badge.textContent = data.no_leidas;
+                    } else {
+                        badge.style.display = "none";
+                    }
+                }
+            });
+    }
+
+   function renderizarNotificaciones(tipo) {
+    const contenedor = document.getElementById("contenedorNotificaciones");
+
+    const badgeGenerales = document.getElementById("badgeGenerales");
+    const badgeSeguidores = document.getElementById("badgeSeguidores");
+    const badgeOfertas = document.getElementById("badgeOfertas");
+
+    if (todasNotificaciones.generalesNoLeidas.length > 0) {
+        badgeGenerales.style.display = "inline-block";
+        badgeGenerales.classList.add("animar-pulse");
+    } else {
+        badgeGenerales.style.display = "none";
+        badgeGenerales.classList.remove("animar-pulse");
+    }
+
+     if (todasNotificaciones.seguidoresNoLeidas.length > 0) {
+        badgeSeguidores.style.display = "inline-block";
+        badgeSeguidores.classList.add("animar-pulse");
+    } else {
+        badgeSeguidores.style.display = "none";
+        badgeSeguidores.classList.remove("animar-pulse");
+    }
+
+    if (todasNotificaciones.ofertasNoLeidas.length > 0) {
+        badgeOfertas.style.display = "inline-block";
+        badgeOfertas.classList.add("animar-pulse");
+    } else {
+        badgeOfertas.style.display = "none";
+        badgeOfertas.classList.remove("animar-pulse");
+    }
+    
+    contenedor.classList.add("fade-out");
+
+    
+    setTimeout(() => {
+        contenedor.innerHTML = "";
+
+        let noLeidas = [];
+        let leidas = [];
+
+        if (tipo === "generales") {
+            noLeidas = todasNotificaciones.generalesNoLeidas;
+            leidas = todasNotificaciones.generalesLeidas;
+        } else if (tipo === "seguidores") {
+            noLeidas = todasNotificaciones.seguidoresNoLeidas;
+            leidas = todasNotificaciones.seguidoresLeidas;
+        } else if (tipo === "ofertas") {
+            noLeidas = todasNotificaciones.ofertasNoLeidas;
+            leidas = todasNotificaciones.ofertasLeidas;
+        }
+
+
+        if (noLeidas.length > 0) {
+            noLeidas.forEach(notif => {
+                contenedor.innerHTML += renderNotificacion(notif, true);
+            });
+        }
+        if (leidas.length > 0) {
+            leidas.forEach(notif => {
+                contenedor.innerHTML += renderNotificacion(notif, false);
+            });
+        }
+        if (noLeidas.length === 0 && leidas.length === 0) {
+            contenedor.innerHTML = "<p class='mb-0'>No hay notificaciones en esta sección.</p>";
+        }
+
+        
+        contenedor.classList.remove("fade-out");
+        contenedor.classList.add("fade-in");
+        }, 200); // tiempo de espera para que se vea el fade-out
+    }
+
+    function renderNotificacion(notif, noLeida) {
+        let foto = "";
+        if (notif.foto_perfil) {
+            foto = `<img src="${notif.foto_perfil}" class="notificacion-foto" alt="Foto de perfil">`;
+        } else {
+            foto = `<div class="d-flex align-items-center justify-content-center notificacion-foto bg-secondary text-white">
+                        <i class="bi bi-person-fill"></i>
+                    </div>`;
+        }
+
+        let enlace = notif.url;
+        if ((notif.tipo === "comentario" || notif.tipo === "me_gusta") && notif.publicacion_id) {
+            enlace += `?publicacion_id=${notif.publicacion_id}`;
+        }
+
+        return `
+            <a href="${enlace}" class="notificacion-item ${noLeida ? 'no-leida' : ''}" style="text-decoration: none; color: inherit;">
+                ${foto}
+                <div class="notificacion-contenido">
+                    <p class="notificacion-mensaje">${notif.mensaje}</p>
+                    <span class="notificacion-fecha">${notif.fecha}</span>
+                </div>
+            </a>
+        `;
+    }
+
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const dropdown = document.getElementById("dropdownNotificaciones");
+
+        dropdown.addEventListener("click", function () {
+            fetch("{% url 'obtener_notificaciones' %}")
+                .then(response => response.json())
+                .then(data => {
+                    // Separar por tipo
+                    const generales = data.notificaciones.filter(n => n.tipo === "comentario" || n.tipo === "me_gusta");
+                    const seguidores = data.notificaciones.filter(n => n.tipo === "follow");
+                    const ofertas = data.notificaciones.filter(n => n.tipo === "voluntariado");
+
+                    todasNotificaciones.generalesNoLeidas = generales.filter(n => !n.leido);
+                    todasNotificaciones.generalesLeidas = generales.filter(n => n.leido).slice(0, 8);
+
+                        
+                    todasNotificaciones.seguidoresNoLeidas = seguidores.filter(n => !n.leido);
+                    todasNotificaciones.seguidoresLeidas = seguidores.filter(n => n.leido).slice(0, 8);
+
+                    todasNotificaciones.ofertasNoLeidas = ofertas.filter(n => !n.leido);
+                    todasNotificaciones.ofertasLeidas = ofertas.filter(n => n.leido).slice(0, 8);
+
+                    let tipoActivo = "generales"; 
+
+                    if (document.getElementById("btnSeguidores").classList.contains("active")) {
+                        tipoActivo = "seguidores";
+                    } else if (document.getElementById("btnOfertas").classList.contains("active")) {
+                        tipoActivo = "ofertas";
+                    }
+
+                    renderizarNotificaciones(tipoActivo);
+
+                    fetch("{% url 'marcar_notificaciones_leidas' %}")
+                        .then(() => actualizarContadorNotificaciones());
+                })
+                .catch(error => {
+                    console.error("Error cargando notificaciones:", error);
+                });
+        });
+
+        actualizarContadorNotificaciones();
+        setInterval(actualizarContadorNotificaciones, 30000);
+
+        // Botones de pestañas
+        document.getElementById("btnGenerales").addEventListener("click", function(event) {
+        event.stopPropagation();
+        this.classList.add("active");
+        document.getElementById("btnSeguidores").classList.remove("active");
+        document.getElementById("btnOfertas").classList.remove("active");
+        renderizarNotificaciones("generales");
+        document.getElementById("badgeGenerales").style.display = "none";
+    });
+
+    document.getElementById("btnSeguidores").addEventListener("click", function(event) {
+        event.stopPropagation();
+        this.classList.add("active");
+        document.getElementById("btnGenerales").classList.remove("active");
+        document.getElementById("btnOfertas").classList.remove("active");
+        renderizarNotificaciones("seguidores");
+        document.getElementById("badgeSeguidores").style.display = "none";
+    });
+
+    document.getElementById("btnOfertas").addEventListener("click", function(event) {
+        event.stopPropagation();
+        this.classList.add("active");
+        document.getElementById("btnGenerales").classList.remove("active");
+        document.getElementById("btnSeguidores").classList.remove("active");
+        renderizarNotificaciones("ofertas");
+        document.getElementById("badgeOfertas").style.display = "none";
+    });
+
+
+    });
+</script>

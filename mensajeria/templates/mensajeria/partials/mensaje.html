@@ -1,0 +1,21 @@
+{% if mensaje.remitente == request.user %}
+    <div class="d-flex justify-content-end">
+        <div class="p-2 bubble-right">
+            {{ mensaje.contenido }}
+            <div class="small text-end text-light mt-1">{{ mensaje.fecha_envio|date:"d/m/Y H:i" }}</div>
+        </div>
+    </div>
+{% else %}
+    <div class="d-flex align-items-start">
+        {% if mensaje.remitente.foto_perfil %}
+            <img src="{{ mensaje.remitente.foto_perfil.url }}" class="rounded-circle me-2" style="width:30px;height:30px;object-fit:cover;">
+        {% else %}
+            <i class="bi bi-person-circle me-2" style="font-size:2rem;"></i>
+        {% endif %}
+        <div class="p-2 bubble-left">
+            <strong>{{ mensaje.remitente.username }}</strong><br>
+            {{ mensaje.contenido }}
+            <div class="small text-muted mt-1">{{ mensaje.fecha_envio|date:"d/m/Y H:i" }}</div>
+        </div>
+    </div>
+{% endif %}

@@ -1,0 +1,35 @@
+{% if hay_mensajes %}
+<div class="text-center mb-2">
+    <button id="cargarMasBtn" class="btn btn-outline-secondary btn-sm">Cargar más</button>
+    <div id="noMasMensajes" class="text-muted mt-2" style="display: none;">No hay más mensajes.</div>
+</div>
+{% endif %}
+
+<div id="contenedorMensajes" class="d-flex flex-column gap-3">
+    {% for mensaje in mensajes %}
+        {% if mensaje.remitente == request.user %}
+            <!-- Mensaje propio (derecha) estilo burbuja -->
+            <div class="d-flex justify-content-end">
+                <div class="p-2 bubble-right">
+                    {{ mensaje.contenido }}
+                    <div class="small text-end text-light mt-1">{{ mensaje.fecha_envio|date:"d/m/Y H:i" }}</div>
+                </div>
+            </div>
+        {% else %}
+            <!-- Mensaje recibido (izquierda) estilo burbuja -->
+            <div class="d-flex align-items-start">
+                {% if mensaje.remitente.foto_perfil %}
+                    <img src="{{ mensaje.remitente.foto_perfil.url }}" class="rounded-circle me-2" style="width:30px;height:30px;object-fit:cover;">
+                {% else %}
+                    <i class="bi bi-person-circle me-2" style="font-size:2rem;"></i>
+                {% endif %}
+                <div class="p-2 bubble-left">
+                    <strong>{{ mensaje.remitente.username }}</strong><br>
+                    {{ mensaje.contenido }}
+                    <div class="small text-muted mt-1">{{ mensaje.fecha_envio|date:"d/m/Y H:i" }}</div>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
+

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.rating {
+    direction: rtl;
+    unicode-bidi: bidi-override;
+    display: flex;
+    gap: 5px;
+}
+.rating input {
+    display: none;
+}
+.rating label {
+    font-size: 1.5rem;
+    color: #ccc;
+    cursor: pointer;
+}
+.rating input:checked ~ label,
+.rating label:hover,
+.rating label:hover ~ label {
+    color: gold;
+}
+</style>
+
+<div class="container mt-5">
+  <h3>{{ voluntariado.nombre }}</h3>
+  <p>{{ voluntariado.descripcion }}</p>
+
+  {% if voluntariado.finalizado %}
+    <div class="alert alert-info alert-static mt-3">
+      <strong>Este voluntariado ha finalizado.</strong>
+    </div>
+  {% endif %}
+
+  <!-- Perfil de la organización -->
+  <div class="mt-4 d-flex align-items-center">
+    {% if voluntariado.entidad.foto_perfil %}
+      <a href="{% if voluntariado.entidad == request.user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' voluntariado.entidad.username %}{% endif %}">
+        <img src="{{ voluntariado.entidad.foto_perfil.url }}" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover;">
+      </a>
+    {% else %}
+      <a href="{% if voluntariado.entidad == request.user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' voluntariado.entidad.username %}{% endif %}" class="text-decoration-none me-3">
+        <i class="bi bi-building fs-2 text-muted"></i>
+      </a>
+    {% endif %}
+    <a href="{% if voluntariado.entidad == request.user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' voluntariado.entidad.username %}{% endif %}" class="fw-semibold text-dark text-decoration-none">
+      {{ voluntariado.entidad.username }}
+    </a>
+  </div>
+
+    {% if voluntariado.curso_previo and not voluntariado.finalizado %}
+    <div class="alert alert-info alert-static mt-4">
+        <strong>Curso previo requerido:</strong><br>
+        {{ voluntariado.curso_previo }}
+    </div>
+    {% endif %}
+
+
+  <h5 class="mt-4">Otros participantes aceptados:</h5>
+  <ul class="list-group mt-3">
+    {% for p in participantes %}
+      <li class="list-group-item d-flex align-items-center">
+        {% if p.usuario.foto_perfil %}
+          <a href="{% if p.usuario == request.user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' p.usuario.username %}{% endif %}">
+            <img src="{{ p.usuario.foto_perfil.url }}" class="rounded-circle me-3" style="width: 40px; height: 40px;">
+          </a>
+        {% else %}
+          <a href="{% if p.usuario == request.user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' p.usuario.username %}{% endif %}" class="me-3">
+            <i class="bi bi-person-circle fs-3"></i>
+          </a>
+        {% endif %}
+        <a href="{% if p.usuario == request.user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' p.usuario.username %}{% endif %}" class="text-dark fw-semibold text-decoration-none">
+          {{ p.usuario.username }}
+        </a>
+      </li>
+    {% empty %}
+      <li class="list-group-item">Aún no hay más participantes aceptados.</li>
+    {% endfor %}
+  </ul>
+  {% if not ha_valorado and participacion.finalizado %}
+  <hr class="mt-4">
+  <h5>Valora tu experiencia:</h5>
+  <form method="post" action="{% url 'valorar_voluntariado' voluntariado.id %}">
+    {% csrf_token %}
+    <div class="mb-3">
+    
+    <div class="rating d-flex justify-content-center">
+        {% for i in "54321" %}
+        <input type="radio" name="estrellas" id="estrella{{ i }}" value="{{ i }}">
+        <label for="estrella{{ i }}"><i class="bi bi-star-fill"></i></label>
+        {% endfor %}
+    </div>
+    </div>
+
+
+    <div class="mb-3">
+      <label for="comentario" class="form-label">Comentario (opcional):</label>
+      <textarea name="comentario" id="comentario" class="form-control" rows="3"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Enviar valoración</button>
+  </form>
+{% endif %}
+
+{% if valoracion %}
+  <hr class="mt-4">
+  <h5>Tu valoración:</h5>
+  <p>
+    {% for i in rango_estrellas %}
+    <i class="bi bi-star-fill {% if i <= valoracion.estrellas %}text-warning{% else %}text-secondary{% endif %}"></i>
+    {% endfor %}
+  </p>
+  {% if valoracion.comentario %}
+    <div class="alert alert-secondary alert-static">{{ valoracion.comentario }}</div>
+  {% endif %}
+{% endif %}
+
+</div>
+
+
+
+{% endblock %}

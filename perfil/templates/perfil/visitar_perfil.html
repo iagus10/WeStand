@@ -1,0 +1,744 @@
+{% extends "base.html" %}
+{% load static %}
+{% block extra_css %}
+
+<style>
+#seccion-experiencias,
+#seccion-ofertas,
+#seccion-publicaciones,
+#seccion-valoraciones {
+    opacity: 0;
+    transition: opacity 0.4s ease-in-out;
+    display: none;
+}
+
+.seccion-visible {
+    display: block !important;
+    opacity: 1 !important;
+}
+
+img.banner-img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover contain;
+    object-position: center;
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.voluntariado-card {
+    position: relative;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    background-color: #fff;
+    border-radius: 0.5rem;
+}
+
+.voluntariado-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.inscribirme-btn-wrapper {
+    position: absolute;
+    bottom: 15px;
+    right: 20px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.voluntariado-card:hover .inscribirme-btn-wrapper {
+    opacity: 1;
+}
+
+.inscribirme-btn-wrapper .btn {
+    background-color: #f8f9fa;
+    color: #333;
+    border-color: #ccc;
+    font-size: 0.9rem;
+}
+
+.inscribirme-btn-wrapper .btn:hover {
+    background-color: #e2e6ea;
+    border-color: #bbb;
+}
+
+</style>
+
+
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center">Perfil de {{ perfil.first_name }} {{ perfil.last_name }}</h2>
+
+    <div class="card p-4 shadow-lg rounded-3 mt-4">
+
+        {% if perfil.banner %}
+            <div class="mb-3">
+                <img src="{{ perfil.banner.url }}" alt="Banner" class="banner-img">
+            </div>
+        {% endif %}
+
+        <div class="row align-items-center">
+            <div class="col-md-3 text-center">
+                {% if perfil.foto_perfil %}
+                <img src="{{ perfil.foto_perfil.url }}" class="profile-image" alt="Foto de perfil"
+                    style="width: 150px; height: 150px; object-fit: cover; border-radius: 50%; border: 3px solid #eee;">
+                {% else %}
+                <i class="bi bi-person-circle fs-1 text-muted"
+                    style="font-size: 150px;"></i>
+                {% endif %}
+
+            </div>
+
+            <div class="col-md-9">
+                <h3>{{ perfil.first_name }} {{ perfil.last_name }}</h3>
+                <p>
+                    @{{ perfil.username }}
+                    {% for user_insignia in insignias_usuario %}
+                        <img src="{{ user_insignia.insignia.icono.url }}"
+                            alt="{{ user_insignia.insignia.nombre }}"
+                            title="{{ user_insignia.insignia.nombre }}"
+                            style="width: 30px; height: 30px; margin-left: 8px;">
+                    {% endfor %}
+                </p>
+                {% if perfil.user_type == 'volunteer' %}
+                    <div class="mb-3">
+                        <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
+                            Nivel {{ perfil.nivel }}
+                        </span>
+                    </div>
+                {% endif %}
+
+                <p><strong>Tipo de usuario:</strong> 
+                {% if perfil.user_type == "volunteer" %}
+                    Voluntario
+                {% else %}
+                    Organización
+                {% endif %}
+                </p>
+                <p><strong>Biografía:</strong> {{ perfil.biografia|default:"No ha escrito una biografía." }}</p>
+                <p><strong>Ubicación:</strong> {{ perfil.ubicacion|default:"No especificada" }}</p>
+                <p><strong>Disponibilidad:</strong> {{ perfil.disponibilidad|default:"No especificada" }}</p>
+
+                <p><strong>Seguidores:</strong> <span id="contador-seguidores">{{ seguidores }}</span></p>
+                <p><strong>Siguiendo:</strong> {{ siguiendo }}</p>
+
+                {% if request.user != perfil %}
+                <button class="btn btn-{% if ya_sigo %}secondary{% else %}primary{% endif %}" id="btn-seguir">
+                    {% if ya_sigo %}Dejar de seguir{% else %}Seguir{% endif %}
+                </button>
+                {% endif %}
+
+                {% if perfil.user_type == 'volunteer' %}
+                    <div class="mt-4">
+                        <h4>Áreas de Interés</h4>
+                        <ul>
+                            {% for categoria in preferencias_usuario %}
+                                <li>{{ categoria.categoria.nombre }}</li>
+                            {% empty %}
+                                <li>No ha seleccionado áreas de interés.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <div class="mt-4">
+                        <h4>Habilidades</h4>
+                        <ul>
+                            {% for habilidad in habilidades_usuario %}
+                                <li>{{ habilidad.habilidad.nombre }}</li>
+                            {% empty %}
+                                <li>No ha especificado habilidades.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Botones de conmutación -->
+    <div class="text-center mt-5">
+        <div class="btn-group" role="group">
+            {% if es_organizacion %}
+            <button id="btn-ver-ofertas" class="btn btn-outline-primary active">Ofertas</button>
+            {% else %}
+            <button id="btn-ver-experiencias" class="btn btn-outline-primary active">Experiencias</button>
+            {% endif %}
+            <button id="btn-ver-publicaciones" class="btn btn-outline-primary">Publicaciones</button>
+            <button id="btn-ver-valoraciones" class="btn btn-outline-primary">Valoraciones</button>
+        </div>
+    </div>
+
+    <!-- Sección de valoraciones -->
+    <div id="seccion-valoraciones" class="mt-5">
+        <h3 class="text-center mb-4">Valoraciones recibidas</h3>
+        {% if media_valoraciones %}
+            <p class="text-center text-muted mb-4">
+                Nota media: 
+                <strong>{{ media_valoraciones|floatformat:1 }}/5</strong>
+                ({{ total_valoraciones }} valoración{{ total_valoraciones|pluralize }})
+                <span class="text-warning ms-2">
+                    {% for i in "12345"|make_list %}
+                        {% if forloop.counter <= media_valoraciones %}
+                            <i class="bi bi-star-fill"></i>
+                        {% elif forloop.counter < media_valoraciones|add:"1" %}
+                            <i class="bi bi-star-half"></i>
+                        {% else %}
+                            <i class="bi bi-star text-secondary"></i>
+                        {% endif %}
+                    {% endfor %}
+                </span>
+            </p>
+        {% endif %}
+
+        {% if valoraciones %}
+        <ul class="list-group">
+            {% for v in valoraciones %}
+            <li class="list-group-item d-flex align-items-start">
+                <!-- FOTO -->
+                {% if v.autor.foto_perfil %}
+                <a href="{% url 'ver_perfil' v.autor.username %}">
+                    <img src="{{ v.autor.foto_perfil.url }}" class="rounded-circle me-3" style="width: 45px; height: 45px; object-fit: cover;">
+                </a>
+                {% else %}
+                <a href="{% url 'ver_perfil' v.autor.username %}" class="me-3">
+                    <i class="bi bi-person-circle fs-3 text-muted"></i>
+                </a>
+                {% endif %}
+
+                <!-- CONTENIDO -->
+                <div>
+                <a href="{% url 'ver_perfil' v.autor.username %}" class="fw-semibold text-dark text-decoration-none">
+                    {{ v.autor.username }}
+                </a>
+                <p class="mb-1 small text-muted">
+                    Valoró el voluntariado: 
+                    <strong>
+                        {% if user == v.voluntariado.entidad %}
+                        <a href="{% url 'ver_solicitudes' v.voluntariado.id %}" class="text-decoration-none">
+                            {{ v.voluntariado.nombre }}
+                        </a>
+                        {% else %}
+                        {{ v.voluntariado.nombre }}
+                        {% endif %}
+                    </strong>
+                </p>
+
+                <div class="text-warning mb-1">
+                    {% for i in "12345"|make_list %}
+                    {% if forloop.counter <= v.estrellas %}
+                        <i class="bi bi-star-fill"></i>
+                    {% else %}
+                        <i class="bi bi-star text-secondary"></i>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+
+                {% if v.comentario %}
+                <p class="mb-0 text-muted">{{ v.comentario }}</p>
+                {% endif %}
+                <p class="text-muted small">{{ v.fecha|date:"d M Y - H:i" }}</p>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-center text-muted mt-4">Este usuario aún no ha recibido valoraciones.</p>
+        {% endif %}
+    </div>
+
+
+    <!-- Sección de experiencias -->
+    {% if not es_organizacion %}
+    <div id="seccion-experiencias" class="mt-5">
+        <h3 class="text-center mb-4">Experiencias</h3>
+        <div class="row">
+            {% for experiencia in experiencias %}
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="me-3">
+                            {% for entidad in entidades %}
+                                {% if entidad.username == experiencia.organizacion %}
+                                    {% if entidad.foto_perfil %}
+                                    <img src="{{ entidad.foto_perfil.url }}" class="rounded-circle border"
+                                        style="width: 60px; height: 60px; object-fit: cover;" alt="{{ entidad.username }}">
+                                    {% else %}
+                                    <i class="bi bi-building fs-1 text-muted"></i>
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <div>
+                            <h5 class="card-title">{{ experiencia.titulo }}</h5>
+                            <h6 class="card-subtitle text-muted mb-2">@{{ experiencia.organizacion }}</h6>
+                            <p class="card-text">{{ experiencia.descripcion|default:"Sin descripción." }}</p>
+                            <p class="card-text text-muted small">
+                                <i class="bi bi-calendar-event"></i>
+                                {{ experiencia.fecha_inicio }} -
+                                {% if experiencia.fecha_fin %}
+                                    {{ experiencia.fecha_fin }}
+                                {% else %}
+                                    Actualidad
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-center">Este usuario no tiene experiencias registradas.</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Sección de ofertas -->
+    {% if es_organizacion %}
+    <div id="seccion-ofertas" class="mt-5">
+        <h3 class="text-center mb-4">Ofertas de Voluntariado</h3>
+        {% for oferta in ofertas %}
+            <div class="card mb-4 shadow-sm voluntariado-card">
+                <div class="card-body position-relative">
+
+                    <div class="d-flex align-items-center mb-2">
+                        {% if oferta.entidad.foto_perfil %}
+                        <img src="{{ oferta.entidad.foto_perfil.url }}" alt="Foto entidad" class="rounded-circle me-2"
+                            style="width: 40px; height: 40px; object-fit: cover;">
+                        {% else %}
+                        <i class="bi bi-person-circle fs-4 me-2"></i>
+                        {% endif %}
+                        <span class="fw-bold">{{ oferta.entidad.username }}</span>
+                    </div>
+
+                    <h5 class="fw-semibold">{{ oferta.nombre }}</h5>
+                    <p>{{ oferta.descripcion }}</p>
+                    <p class="mb-1"><strong>Ubicación:</strong> {{ oferta.ubicacion }}</p>
+                    <p class="mb-1"><strong>Fechas:</strong> {{ oferta.fecha_inicio }} - {{ oferta.fecha_fin }}</p>
+
+                    {% if oferta.foto %}
+                    <img src="{{ oferta.foto.url }}" alt="Foto" class="img-fluid rounded mb-2"
+                        style="max-height: 300px; object-fit: cover;">
+                    {% endif %}
+
+                    {% if user.is_authenticated and user.user_type == 'volunteer' %}
+                    <div class="inscribirme-btn-wrapper">
+                        <a href="{% url 'inscripcion_voluntariado' oferta.id %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-person-plus me-1"></i> Inscribirme
+                        </a>
+                    </div>
+                    {% endif %}
+
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-center">Esta organización no ha publicado ofertas.</p>
+            {% endfor %}
+
+    </div>
+    {% endif %}
+    <!-- Sección de publicaciones -->
+    <div id="seccion-publicaciones" class="mt-5">
+        <h3 class="text-center mb-4">Publicaciones</h3>
+        {% for pub in publicaciones %}
+        <div class="card mb-3 p-3" id="publicacion-{{ pub.id }}">
+            <div class="d-flex align-items-center mb-2">
+                {% if pub.usuario.foto_perfil %}
+                <img src="{{ pub.usuario.foto_perfil.url }}" class="rounded-circle me-2"
+                     style="width: 40px; height: 40px; object-fit: cover;">
+                {% else %}
+                <i class="bi bi-person-circle fs-4 me-2"></i>
+                {% endif %}
+                <span class="fw-bold">{{ pub.usuario.username }}</span>
+            </div>
+
+            <p>{{ pub.contenido }}</p>
+
+            {% if pub.imagen %}
+            <div class="text-start">
+                <img src="{{ pub.imagen.url }}" alt="Imagen" class="img-fluid rounded"
+                     style="max-height: 400px; object-fit: contain;">
+            </div>
+            {% endif %}
+
+            <p class="text-muted small mt-2 fecha-relativa" data-fecha="{{ pub.fecha_creacion|date:'c' }}">
+                {{ pub.fecha_creacion|date:"d M Y - H:i" }}
+            </p>
+
+            <div class="d-flex gap-5 align-items-center mt-3">
+                <div class="text-center">
+                    <button class="btn btn-outline-danger like-btn" data-id="{{ pub.id }}">
+                        <i class="bi {% if pub.id in publicaciones_likes_usuario %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                        Me gusta
+                    </button>
+                    <div id="like-count-{{ pub.id }}" class="small mt-1">{{ pub.megusta_set.count }} me gusta</div>
+                </div>
+
+                <div class="text-center">
+                    <button class="btn btn-outline-secondary toggle-comment" data-id="{{ pub.id }}">
+                        <i class="bi bi-chat-dots"></i> Comentar
+                    </button>
+                    <div id="comentario-count-{{ pub.id }}" class="small mt-1">{{ pub.comentario_set.count }} comentarios</div>
+                </div>
+            </div>
+
+            <!-- Comentarios -->
+            <div class="comment-section mt-3" id="comment-section-{{ pub.id }}" style="display: none;">
+                <textarea class="form-control mb-2" placeholder="Escribe un comentario..."
+                          id="comentario-textarea-{{ pub.id }}"></textarea>
+                <button class="btn btn-primary enviar-comentario" data-id="{{ pub.id }}">Enviar</button>
+
+                <div class="mt-4">
+                    {% for comentario in pub.comentario_set.all %}
+                    <div class="d-flex align-items-start mb-2" id="comentario-{{ comentario.id }}">
+                        <a href="{% if comentario.usuario == perfil %}#{% elif comentario.usuario == user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' comentario.usuario.username %}{% endif %}">
+                            {% if comentario.usuario.foto_perfil %}
+                            <img src="{{ comentario.usuario.foto_perfil.url }}" alt="foto"
+                                 class="rounded-circle me-2"
+                                 style="width: 40px; height: 40px; object-fit: cover;">
+                            {% else %}
+                            <i class="bi bi-person-circle fs-4 me-2"></i>
+                            {% endif %}
+                        </a>
+
+                        <div class="flex-grow-1">
+                            <a href="{% if comentario.usuario == perfil %}#{% elif comentario.usuario == user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' comentario.usuario.username %}{% endif %}"
+                               class="text-dark fw-bold text-decoration-none">
+                                {{ comentario.usuario.username }}
+                            </a>: {{ comentario.contenido }}
+                            <div class="text-muted small mt-1 fecha-relativa" data-fecha="{{ comentario.fecha|date:'c' }}">
+                                {{ comentario.fecha|date:"d M Y - H:i" }}
+                            </div>
+                        </div>
+
+                        {% if comentario.usuario == user or pub.usuario == user %}
+                        <button class="btn btn-light border rounded-circle delete-comment ms-2"
+                                title="Eliminar comentario" data-id="{{ comentario.id }}" data-bs-toggle="modal"
+                                data-bs-target="#confirmDeleteComentarioModal">
+                            <i class="bi bi-dash-lg"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-center">Este usuario no ha hecho publicaciones.</p>
+        {% endfor %}
+    </div>
+    <!-- Modal para confirmar eliminación de comentario -->
+<div class="modal fade" id="confirmDeleteComentarioModal" tabindex="-1"
+     aria-labelledby="confirmDeleteComentarioModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar comentario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">¿Estás seguro de que quieres eliminar este comentario?</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteCommentBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+<script>dayjs.extend(dayjs_plugin_relativeTime);</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const btnExp = document.getElementById("btn-ver-experiencias");
+    const btnOfer = document.getElementById("btn-ver-ofertas");
+    const btnPub = document.getElementById("btn-ver-publicaciones");
+    const btnVal = document.getElementById("btn-ver-valoraciones");
+
+    const seccionExp = document.getElementById("seccion-experiencias");
+    const seccionOfer = document.getElementById("seccion-ofertas");
+    const seccionPub = document.getElementById("seccion-publicaciones");
+    const seccionVal = document.getElementById("seccion-valoraciones");
+
+    function activar(boton) {
+        boton?.classList.add("active", "btn-primary");
+        boton?.classList.remove("btn-outline-primary");
+    }
+
+    function desactivar(boton) {
+        boton?.classList.remove("active", "btn-primary");
+        boton?.classList.add("btn-outline-primary");
+    }
+
+    function mostrarSeccionSuave(seccion) {
+        if (!seccion) return;
+        seccion.style.display = "block";
+        setTimeout(() => {
+            seccion.style.opacity = 1;
+        }, 10);
+    }
+
+    function ocultarSeccionSuave(seccion) {
+        if (!seccion) return;
+        seccion.style.opacity = 0;
+        setTimeout(() => {
+            seccion.style.display = "none";
+        }, 300);
+    }
+
+    // Mostrar por defecto una sección activa
+    if (seccionExp && btnExp?.classList.contains("active")) {
+        seccionExp.style.display = "block";
+        seccionExp.style.opacity = 1;
+    }
+    if (seccionOfer && btnOfer?.classList.contains("active")) {
+        seccionOfer.style.display = "block";
+        seccionOfer.style.opacity = 1;
+    }
+    if (seccionVal && btnVal?.classList.contains("active")) {
+        seccionVal.style.display = "block";
+        seccionVal.style.opacity = 1;
+    }
+
+    // Botones de cambio
+    if (btnExp) {
+        btnExp.addEventListener("click", () => {
+            activar(btnExp);
+            desactivar(btnPub);
+            desactivar(btnOfer);
+            mostrarSeccionSuave(seccionExp);
+            ocultarSeccionSuave(seccionOfer);
+            ocultarSeccionSuave(seccionPub);
+        });
+    }
+
+    if (btnOfer) {
+        btnOfer.addEventListener("click", () => {
+            activar(btnOfer);
+            desactivar(btnPub);
+            desactivar(btnExp);
+            desactivar(btnVal);
+            mostrarSeccionSuave(seccionOfer);
+            ocultarSeccionSuave(seccionVal);
+            ocultarSeccionSuave(seccionExp);
+            ocultarSeccionSuave(seccionPub);
+        });
+    }
+
+    if (btnPub) {
+        btnPub.addEventListener("click", () => {
+            activar(btnPub);
+            desactivar(btnExp);
+            desactivar(btnOfer);
+            desactivar(btnVal);
+            mostrarSeccionSuave(seccionPub);
+            ocultarSeccionSuave(seccionVal);
+            ocultarSeccionSuave(seccionExp);
+            ocultarSeccionSuave(seccionOfer);
+        });
+    }
+    if (btnVal) {
+        btnVal.addEventListener("click", () => {
+            activar(btnVal);
+            desactivar(btnExp);
+            desactivar(btnPub);
+            desactivar(btnOfer);
+            mostrarSeccionSuave(seccionVal);
+            ocultarSeccionSuave(seccionExp);
+            ocultarSeccionSuave(seccionOfer);
+            ocultarSeccionSuave(seccionPub);
+        });
+    }
+
+    // Me gusta
+    document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const pubId = this.dataset.id;
+            fetch(`/publicaciones/me-gusta/${pubId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                const icon = this.querySelector('i');
+                icon.classList.toggle('bi-heart-fill', data.liked);
+                icon.classList.toggle('bi-heart', !data.liked);
+                document.getElementById(`like-count-${pubId}`).textContent = `${data.total_likes} me gusta`;
+            });
+        });
+    });
+
+    // Mostrar/ocultar comentarios
+    document.querySelectorAll('.toggle-comment').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const pubId = this.dataset.id;
+            const section = document.getElementById(`comment-section-${pubId}`);
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+        });
+    });
+
+    // Enviar comentario
+    document.querySelectorAll('.enviar-comentario').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const pubId = this.dataset.id;
+            const textarea = document.getElementById(`comentario-textarea-${pubId}`);
+            const contenido = textarea.value.trim();
+            if (!contenido) return;
+
+            fetch(`/publicaciones/comentar/${pubId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ contenido })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    const section = document.getElementById(`comment-section-${pubId}`);
+                    const nuevo = document.createElement('div');
+                    nuevo.classList.add('d-flex', 'align-items-start', 'mb-2');
+                    nuevo.id = `comentario-${data.id}`;
+                    nuevo.innerHTML = `
+                        <img src="${data.foto_url || '/static/gestionLogin/img/profile.png'}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                        <div class="flex-grow-1">
+                            <strong>${data.usuario}</strong>: ${data.contenido}
+                            <div class="text-muted small mt-1 fecha-relativa" data-fecha="${data.fecha}">
+                                ${dayjs(data.fecha).fromNow()}
+                            </div>
+                        </div>
+                        <button class="btn btn-light border rounded-circle delete-comment ms-2"
+                            title="Eliminar comentario" data-id="${data.id}" data-bs-toggle="modal"
+                            data-bs-target="#confirmDeleteComentarioModal">
+                            <i class="bi bi-dash-lg"></i>
+                        </button>`;
+                    section.querySelector('.mt-4')?.appendChild(nuevo);
+                    textarea.value = "";
+
+                    const contador = document.getElementById(`comentario-count-${pubId}`);
+                    if (contador) {
+                        const partes = contador.textContent.split(" ");
+                        contador.textContent = `${parseInt(partes[0] || 0) + 1} comentarios`;
+                    }
+                }
+            });
+        });
+    });
+
+    // Eliminar comentario
+    let deleteCommentId = null;
+    document.addEventListener('click', e => {
+        if (e.target.closest('.delete-comment')) {
+            deleteCommentId = e.target.closest('.delete-comment').dataset.id;
+        }
+    });
+
+    document.getElementById('confirmDeleteCommentBtn')?.addEventListener('click', function () {
+        if (deleteCommentId) {
+            fetch(`/publicaciones/eliminar-comentario/${deleteCommentId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            }).then(res => {
+                if (res.ok) {
+                    const comment = document.getElementById(`comentario-${deleteCommentId}`);
+                    if (comment) {
+                        const pubId = comment.closest('.card')?.id?.split('-')[1];
+                        comment.remove();
+
+                        const contador = document.getElementById(`comentario-count-${pubId}`);
+                        if (contador) {
+                            const partes = contador.textContent.split(" ");
+                            contador.textContent = `${Math.max(parseInt(partes[0]) - 1, 0)} comentarios`;
+                        }
+                    }
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteComentarioModal'));
+                    modal?.hide();
+                }
+            });
+        }
+    });
+
+    // Formatear fechas
+    document.querySelectorAll(".fecha-relativa").forEach(el => {
+        const fechaISO = el.dataset.fecha;
+        const fecha = dayjs(fechaISO);
+        const ahora = dayjs();
+        el.textContent = ahora.diff(fecha, 'hour') < 24 ? fecha.fromNow() : fecha.format("DD MMM YYYY - HH:mm");
+    });
+
+    const seguirBtn = document.getElementById("btn-seguir");
+
+    if (seguirBtn) {
+        seguirBtn.addEventListener("click", function () {
+            const username = "{{ perfil.username }}";
+            fetch(`/perfil/seguir/${username}/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}"
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    // Cambiar texto y estilo del botón
+                    if (data.siguiendo) {
+                        seguirBtn.textContent = "Dejar de seguir";
+                        seguirBtn.classList.remove("btn-primary");
+                        seguirBtn.classList.add("btn-secondary");
+                    } else {
+                        seguirBtn.textContent = "Seguir";
+                        seguirBtn.classList.remove("btn-secondary");
+                        seguirBtn.classList.add("btn-primary");
+                    }
+
+                    // Actualizar contador de seguidores
+                    const contador = document.getElementById("contador-seguidores");
+                    if (contador) {
+                        contador.textContent = data.total_seguidores;
+                    }
+                }
+            });
+        });
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const pubId = params.get("publicacion_id");
+
+    if (pubId) {
+        const publicacion = document.getElementById(`publicacion-${pubId}`);
+        if (publicacion) {
+            // Activar sección publicaciones
+            if (btnPub) {
+                btnPub.click();
+            } else {
+                mostrarSeccionSuave(seccionPub);
+                ocultarSeccionSuave(seccionExp);
+                ocultarSeccionSuave(seccionOfer);
+            }
+
+            // Esperar un poco a que se muestre
+            setTimeout(() => {
+                publicacion.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                publicacion.style.transition = 'background-color 0.5s ease';
+                publicacion.style.backgroundColor = '#d3d3d3';
+
+                // Restaurar color después de unos segundos
+                setTimeout(() => {
+                    publicacion.style.backgroundColor = '';
+                }, 3000);
+            }, 500);
+        }
+    }
+    
+
+});
+</script>
+{% endblock %}

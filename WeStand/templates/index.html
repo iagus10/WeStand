@@ -1,0 +1,712 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+.voluntariado-card {
+    position: relative;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    background-color: #fff;
+    border-radius: 0.5rem;
+}
+
+.voluntariado-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.inscribirme-btn-wrapper {
+    position: absolute;
+    bottom: 15px;
+    right: 20px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.voluntariado-card:hover .inscribirme-btn-wrapper {
+    opacity: 1;
+}
+
+.inscribirme-btn-wrapper .btn {
+    background-color: #f8f9fa;
+    color: #333;
+    border-color: #ccc;
+    font-size: 0.9rem;
+}
+
+.inscribirme-btn-wrapper .btn:hover {
+    background-color: #e2e6ea;
+    border-color: #bbb;
+}
+
+
+.sugerencia-card:hover {
+background-color: #f8f9fa;
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+transform: scale(1.02);
+}
+
+#sugerenciasSlider {
+transition: transform 0.4s ease;
+}
+
+
+</style>
+
+
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Inicio</h2>
+
+    <!-- Formulario para publicar -->
+    <div class="card p-4 mb-5 shadow-sm">
+        <h4 class="mb-3">Publicar</h4>
+
+        {% if es_entidad %}
+            <div class="btn-group mb-3" role="group">
+                <button type="button" class="btn {% if formulario_activo == 'publicacion' %}btn-primary{% else %}btn-outline-primary{% endif %}" id="btn-publicacion">
+                    Publicación
+                </button>
+                <button type="button" class="btn {% if formulario_activo == 'voluntariado' %}btn-success{% else %}btn-outline-success{% endif %}" id="btn-voluntariado">
+                    Voluntariado
+                </button>
+            </div>
+
+        <!-- Formulario de publicación -->
+        <form id="form-publicacion" method="post" enctype="multipart/form-data"
+            class="form-toggle {% if formulario_activo == 'publicacion' %}active{% endif %}"
+            style="{% if formulario_activo != 'publicacion' %}display:none{% endif %}">
+            {% csrf_token %}
+            {{ pub_form.as_p }}
+            <button type="submit" name="submit_post" class="btn btn-primary">Publicar</button>
+        </form>
+
+        <!-- Formulario de voluntariado -->
+        <form id="form-voluntariado" method="post" enctype="multipart/form-data"
+            class="form-toggle {% if formulario_activo == 'voluntariado' %}active{% endif %}"
+            style="{% if formulario_activo != 'voluntariado' %}display:none{% endif %}">
+
+            {% csrf_token %}
+            {{ oferta_form.as_p }}
+            <datalist id="sugerencias-ubicacion"></datalist>
+            <button type="submit" name="submit_oferta" class="btn btn-success">Publicar oferta</button>
+        </form>
+
+        {% else %}
+        <!-- Si no es entidad -->
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ pub_form.as_p }}
+            <button type="submit" name="submit_post" class="btn btn-primary">Publicar</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+            Sugerencias para ti
+            <div>
+                <button class="btn btn-sm btn-outline-secondary me-2" id="prevSugerencia"><i class="bi bi-chevron-left"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" id="nextSugerencia"><i class="bi bi-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <div class="overflow-hidden px-3 py-2">
+            <div id="sugerenciasSlider" class="d-flex transition" style="gap: 24px;">
+                {% for sugerido in sugerencias %}
+                    <a href="{% url 'ver_perfil' sugerido.username %}"
+                        class="text-decoration-none sugerencia-card rounded shadow-sm d-flex flex-column align-items-center justify-content-center p-3"
+                        style="min-width: 200px; max-width: 200px; transition: all 0.3s ease;">
+                        {% if sugerido.foto_perfil %}
+                            <img src="{{ sugerido.foto_perfil.url }}" class="rounded-circle mb-2" style="width: 70px; height: 70px; object-fit: cover;">
+                        {% else %}
+                            <i class="bi bi-person-circle text-muted mb-2" style="font-size: 70px;"></i>
+                        {% endif %}
+                        <div class="fw-semibold text-dark">{{ sugerido.username }}</div>
+                        <div class="text-muted small text-center">{{ sugerido.first_name }} {{ sugerido.last_name }}</div>
+                    </a>
+                {% empty %}
+                    <div class="text-muted">No hay sugerencias</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Publicaciones -->
+    <h4 class="mb-3">Publicaciones recientes</h4>
+    {% for pub in publicaciones %}
+    <div class="card mb-4 shadow-sm" id="publicacion-{{ pub.id }}">
+        <div class="card-body">
+            <div class="d-flex justify-content-between">
+                <div class="d-flex align-items-center mb-2">
+                    <a href="{% if pub.usuario == user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' pub.usuario.username %}{% endif %}">
+                        {% if pub.usuario.foto_perfil %}
+                        <img src="{{ pub.usuario.foto_perfil.url }}" alt="foto perfil" class="rounded-circle me-2"
+                             style="width: 40px; height: 40px; object-fit: cover;">
+                        {% else %}
+                        <i class="bi bi-person-circle fs-4 me-2"></i>
+                        {% endif %}
+                    </a>
+                    <a href="{% if pub.usuario == user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' pub.usuario.username %}{% endif %}"
+                       class="text-dark fw-bold text-decoration-none">
+                        {{ pub.usuario.username }}
+                    </a>
+                </div>
+                
+                {% if pub.usuario == user %}
+                <button class="btn btn-light border rounded-circle delete-post" title="Eliminar publicación"
+                    data-id="{{ pub.id }}" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+                {% endif %}
+            </div>
+
+            <p class="card-text">{{ pub.contenido|linebreaks }}</p>
+            {% if pub.imagen %}
+            <img src="{{ pub.imagen.url }}" alt="Imagen" class="img-fluid rounded mb-2"
+                style="max-height: 400px; object-fit: contain;">
+            {% endif %}
+
+            <p class="text-muted small mt-1 fecha-relativa" data-fecha="{{ pub.fecha_creacion|date:'c' }}">
+                {{ pub.fecha_creacion|date:"d M Y - H:i" }}
+            </p>
+
+            <!-- Botones y contadores -->
+            <div class="d-flex gap-5 align-items-center mt-3">
+                <div class="text-center">
+                    <button class="btn btn-outline-danger like-btn" data-id="{{ pub.id }}">
+                        <i
+                            class="bi {% if pub.id in publicaciones_liked_usuario %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                        Me gusta
+                    </button>
+                    <div id="like-count-{{ pub.id }}" class="small mt-1">{{ pub.megusta_set.count }} me gusta</div>
+                </div>
+
+                <div class="text-center">
+                    <button class="btn btn-outline-secondary toggle-comment" data-id="{{ pub.id }}">
+                        <i class="bi bi-chat-dots"></i> Comentar
+                    </button>
+                    <div id="comentario-count-{{ pub.id }}" class="small mt-1">{{ pub.comentario_set.count }}
+                        comentarios</div>
+                </div>
+            </div>
+
+            <!-- Comentarios -->
+            <div class="comment-section mt-3" id="comment-section-{{ pub.id }}" style="display: none;">
+                <textarea class="form-control mb-2" placeholder="Escribe un comentario..."
+                    id="comentario-textarea-{{ pub.id }}"></textarea>
+                <button class="btn btn-primary enviar-comentario" data-id="{{ pub.id }}">Enviar</button>
+
+                <div class="mt-4">
+                    {% for comentario in pub.comentario_set.all %}
+                    <div class="d-flex align-items-start mb-2" id="comentario-{{ comentario.id }}">
+                        <a
+                            href="{% if comentario.usuario == user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' comentario.usuario.username %}{% endif %}">
+                            {% if comentario.usuario.foto_perfil %}
+                            <img src="{{ comentario.usuario.foto_perfil.url }}" alt="foto" class="rounded-circle me-2"
+                                style="width: 40px; height: 40px; object-fit: cover;">
+                            {% else %}
+                            <i class="bi bi-person-circle fs-4 me-2"></i>
+                            {% endif %}
+                        </a>
+
+                        <div class="flex-grow-1">
+                            <a href="{% if comentario.usuario == user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' comentario.usuario.username %}{% endif %}"
+                                class="text-dark fw-bold text-decoration-none">
+                                {{ comentario.usuario.username }}
+                            </a>: {{ comentario.contenido }}
+
+                            <div class="text-muted small mt-1 fecha-relativa"
+                                data-fecha="{{ comentario.fecha|date:'c' }}">
+                                {{ comentario.fecha|date:"d M Y - H:i" }}
+                            </div>
+                        </div>
+
+                        {% if comentario.usuario == user or pub.usuario == user %}
+                        <button class="btn btn-light border rounded-circle delete-comment ms-2"
+                            title="Eliminar comentario" data-id="{{ comentario.id }}" data-bs-toggle="modal"
+                            data-bs-target="#confirmDeleteComentarioModal">
+                            <i class="bi bi-dash-lg"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Ofertas de voluntariado -->
+    <div id="seccion-ofertas" class="mt-5">
+        <h4 class="text-center mb-4">Ofertas de Voluntariado</h4>
+        {% for oferta in ofertas %}
+            <div class="card mb-4 shadow-sm voluntariado-card">
+                <div class="card-body position-relative">
+
+                    <!-- Parte superior: nombre y entidad -->
+                    <div class="d-flex align-items-center mb-3">
+                        <a href="{% if oferta.entidad == user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' oferta.entidad.username %}{% endif %}">
+                            {% if oferta.entidad.foto_perfil %}
+                                <img src="{{ oferta.entidad.foto_perfil.url }}" alt="Foto entidad" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                            {% else %}
+                                <i class="bi bi-person-circle fs-4 me-2"></i>
+                            {% endif %}
+                        </a>
+                        <a href="{% if oferta.entidad == user %}{% url 'perfil' %}{% else %}{% url 'ver_perfil' oferta.entidad.username %}{% endif %}"
+                        class="text-dark fw-bold text-decoration-none">
+                            {{ oferta.entidad.username }}
+                        </a>
+                    </div>
+
+                    <!-- Contenido -->
+                    <p class="card-text">{{ oferta.descripcion|linebreaks }}</p>
+                    <p class="mb-1"><strong>Ubicación:</strong> {{ oferta.ubicacion }}</p>
+                    <p class="mb-1"><strong>Fechas:</strong> {{ oferta.fecha_inicio }} - {{ oferta.fecha_fin }}</p>
+
+                    {% if oferta.foto %}
+                        <img src="{{ oferta.foto.url }}" alt="Foto" class="img-fluid rounded mb-2" style="max-height: 400px; object-fit: contain;">
+                    {% endif %}
+
+                    <!-- Botón flotante -->
+                    {% if user.is_authenticated and user.user_type == 'volunteer' %}
+                        <div class="inscribirme-btn-wrapper">
+                            <a href="{% url 'inscripcion_voluntariado' oferta.id %}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-person-plus"></i> Inscribirme
+                            </a>
+                        </div>
+                    {% endif %}
+
+                </div>
+            </div>
+            {% empty %}
+            <p>No hay ofertas disponibles.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+<!-- Modales de confirmación -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar publicación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body"> ¿Estás seguro de que quieres eliminar esta publicación? </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="confirmDeleteComentarioModal" tabindex="-1"
+    aria-labelledby="confirmDeleteComentarioModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Eliminar comentario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">¿Estás seguro de que quieres eliminar este comentario?</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteCommentBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="confirmDeleteModalOferta" tabindex="-1" aria-labelledby="confirmDeleteModalOfertaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow">
+      <div class="modal-header">
+        <h5 class="modal-title">Eliminar oferta de voluntariado</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">¿Estás seguro de que deseas eliminar esta oferta?</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteOfertaBtn">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+<script>
+    dayjs.extend(dayjs_plugin_relativeTime);
+</script>
+
+<script>
+    let deletePostId = null;
+    let deleteCommentId = null;
+
+    // LIKE
+    document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const pubId = this.dataset.id;
+            fetch(`/publicaciones/me-gusta/${pubId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            }).then(res => res.json())
+                .then(data => {
+                    const icon = this.querySelector('i');
+                    icon.classList.toggle('bi-heart-fill', data.liked);
+                    icon.classList.toggle('bi-heart', !data.liked);
+                    document.getElementById(`like-count-${pubId}`).textContent = `${data.total_likes} me gusta`;
+                });
+        });
+    });
+
+    // Mostrar/ocultar comentarios
+    document.querySelectorAll('.toggle-comment').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const pubId = this.dataset.id;
+            const section = document.getElementById(`comment-section-${pubId}`);
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+        });
+    });
+
+    // Enviar comentario
+    document.querySelectorAll('.enviar-comentario').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const pubId = this.dataset.id;
+            const textarea = document.getElementById(`comentario-textarea-${pubId}`);
+            const contenido = textarea.value.trim();
+
+            if (!contenido) return;
+
+            fetch(`/publicaciones/comentar/${pubId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ contenido })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.ok) {
+                        const commentSection = document.getElementById(`comment-section-${pubId}`);
+                        const newComment = document.createElement('div');
+                        newComment.classList.add('d-flex', 'align-items-start', 'mb-2');
+                        newComment.id = `comentario-${data.id}`;
+
+                        newComment.innerHTML = `
+                            <a href="/perfil/">
+                                <img src="${data.foto_url || '/static/gestionLogin/img/profile.png'}" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                            </a>
+                            <div class="flex-grow-1">
+                                <strong>${data.usuario}</strong>: ${data.contenido}
+                                <div class="text-muted small mt-1">${dayjs(data.fecha).fromNow()}</div>
+                            </div>
+                            <button class="btn btn-light border rounded-circle delete-comment ms-2"
+                                title="Eliminar comentario" data-id="${data.id}" data-bs-toggle="modal"
+                                data-bs-target="#confirmDeleteComentarioModal">
+                                <i class="bi bi-dash-lg"></i>
+                            </button>
+                        `;
+
+                        // Añadir evento a botón de eliminar generado dinámicamente
+                        newComment.querySelector('.delete-comment').addEventListener('click', function () {
+                            deleteCommentId = this.dataset.id;
+                        });
+
+                        commentSection.appendChild(newComment);
+                        textarea.value = '';
+
+                        // Actualizar contador
+                        const contador = document.getElementById(`comentario-count-${pubId}`);
+                        if (contador) {
+                            const partes = contador.textContent.split(" ");
+                            const nuevo = parseInt(partes[0] || 0) + 1;
+                            contador.textContent = `${nuevo} comentarios`;
+                        }
+                    }
+                });
+        });
+    });
+
+    // Botón de eliminar publicación
+    document.querySelectorAll('.delete-post').forEach(btn => {
+        btn.addEventListener('click', function () {
+            deletePostId = this.dataset.id;
+        });
+    });
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+        if (deletePostId) {
+            fetch(`/publicaciones/eliminar/${deletePostId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            }).then(res => {
+                if (res.ok) {
+                    document.getElementById(`publicacion-${deletePostId}`).remove();
+                    bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal')).hide();
+                }
+            });
+        }
+    });
+
+    // Detectar clic en botón de eliminar comentario (incluye dinámicos)
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.delete-comment')) {
+            const btn = e.target.closest('.delete-comment');
+            deleteCommentId = btn.dataset.id;
+        }
+    });
+
+    // Confirmar eliminación comentario
+    document.getElementById('confirmDeleteCommentBtn').addEventListener('click', function () {
+        if (deleteCommentId) {
+            fetch(`/publicaciones/eliminar-comentario/${deleteCommentId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            }).then(res => {
+                if (res.ok) {
+                    const commentElement = document.getElementById(`comentario-${deleteCommentId}`);
+
+                    if (commentElement) {
+                        // Obtener el pubId ANTES de eliminar el comentario del DOM
+                        const commentSection = commentElement.closest('.comment-section');
+                        const pubId = commentSection ? commentSection.id.split('-').pop() : null;
+
+                        // Si no encuentra pubId, no intenta actualizar el contador
+                        if (pubId) {
+                            const contador = document.getElementById(`comentario-count-${pubId}`);
+                            if (contador) {
+                                const partes = contador.textContent.split(" ");
+                                let nuevo = Math.max(parseInt(partes[0]) - 1, 0);
+                                contador.textContent = `${nuevo} comentarios`;
+                            }
+                        }
+
+                        commentElement.remove();
+                    }
+
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteComentarioModal'));
+                    if (modal) modal.hide();
+
+                    deleteCommentId = null;
+                }
+            });
+        }
+    });
+
+    let deleteOfertaId = null;
+
+    document.querySelectorAll('.eliminar-oferta').forEach(btn => {
+        btn.addEventListener('click', function () {
+            deleteOfertaId = this.dataset.id;
+        });
+    });
+
+    document.getElementById('confirmDeleteOfertaBtn')?.addEventListener('click', function () {
+        if (deleteOfertaId) {
+            fetch(`/publicaciones/eliminar-oferta/${deleteOfertaId}/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            }).then(res => {
+                if (res.ok) {
+                    // Elimina la card del DOM sin recargar
+                    const ofertaCard = document.querySelector(`.eliminar-oferta[data-id="${deleteOfertaId}"]`)?.closest('.card');
+                    if (ofertaCard) ofertaCard.remove();
+
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModalOferta'));
+                    if (modal) modal.hide();
+
+                    deleteOfertaId = null;
+                }
+            });
+        }
+    });
+
+
+    // Mostrar tiempo relativo en comentarios cargados inicialmente
+    document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".fecha-relativa").forEach(elem => {
+            const isoFecha = elem.dataset.fecha;
+            const fecha = dayjs(isoFecha);
+            const ahora = dayjs();
+            if (ahora.diff(fecha, 'hour') < 24) {
+                elem.textContent = fecha.fromNow();
+            }
+        });
+    });
+
+    // Alternar formularios publicación/oferta
+    document.addEventListener("DOMContentLoaded", () => {
+        const btnPub = document.getElementById("btn-publicacion");
+        const btnOferta = document.getElementById("btn-voluntariado");
+        const formPub = document.getElementById("form-publicacion");
+        const formOferta = document.getElementById("form-voluntariado");
+
+        if (btnPub && btnOferta && formPub && formOferta) {
+            btnPub.addEventListener("click", () => {
+                btnPub.classList.add("btn-primary");
+                btnPub.classList.remove("btn-outline-primary");
+                btnOferta.classList.remove("btn-success");
+                btnOferta.classList.add("btn-outline-success");
+                formPub.style.display = "block";
+                formOferta.style.display = "none";
+            });
+
+            btnOferta.addEventListener("click", () => {
+                btnOferta.classList.add("btn-success");
+                btnOferta.classList.remove("btn-outline-success");
+                btnPub.classList.remove("btn-primary");
+                btnPub.classList.add("btn-outline-primary");
+                formPub.style.display = "none";
+                formOferta.style.display = "block";
+            });
+        }
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        if (window.location.hash === "#seccion-ofertas") {
+            const btnOfertas = document.getElementById("btn-voluntariado") || document.getElementById("btn-ver-ofertas");
+
+            if (btnOfertas) btnOfertas.click();
+
+            setTimeout(() => {
+                const section = document.getElementById("seccion-ofertas");
+                const header = document.querySelector('header') || document.querySelector('.navbar') || document.querySelector('#navbar'); // Ajusta si tu navbar tiene otro selector
+
+                if (section) {
+                    let headerHeight = 0;
+                    if (header) {
+                        headerHeight = header.offsetHeight;  // Calcula la altura real del header
+                    }
+                    const y = section.getBoundingClientRect().top + window.pageYOffset - headerHeight - 10; // Le restamos 10px más para un pequeño margen visual
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+            }, 400);
+        }
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const input = document.getElementById("ubicacion-input");
+        const latInput = document.getElementById("lat-input");
+        const lonInput = document.getElementById("lng-input");
+        const datalist = document.getElementById("sugerencias-ubicacion");
+        const formOferta = document.getElementById("form-voluntariado");
+
+        let ubicacionesCache = [];
+
+        // Cargar sugerencias
+        input.addEventListener("input", function () {
+            const query = input.value;
+            if (query.length >= 3) {
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+                    .then(response => response.json())
+                    .then(data => {
+                        ubicacionesCache = data;
+                        datalist.innerHTML = "";
+                        data.forEach(item => {
+                            const option = document.createElement("option");
+                            option.value = item.display_name;
+                            datalist.appendChild(option);
+                        });
+                    })
+                    .catch(error => console.error("Error buscando ubicación:", error));
+            }
+        });
+
+        // Al seleccionar una sugerencia
+        input.addEventListener("change", function () {
+            const seleccion = ubicacionesCache.find(item => item.display_name === input.value.trim());
+            if (seleccion) {
+                latInput.value = seleccion.lat;
+                lonInput.value = seleccion.lon;
+            } else {
+                latInput.value = "";
+                lonInput.value = "";
+            }
+        });
+
+        // Antes de enviar el formulario, se asegura de tener coordenadas
+        formOferta.addEventListener("submit", function (e) {
+            const ubicacion = input.value.trim();
+
+            // Si ya están definidas, todo bien
+            if (latInput.value && lonInput.value) return;
+
+            e.preventDefault(); // Pausamos el envío
+
+            // Buscar manualmente una coincidencia exacta o aproximada
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(ubicacion)}&limit=1`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        latInput.value = data[0].lat;
+                        lonInput.value = data[0].lon;
+
+                        const hiddenSubmit = document.createElement("button");
+                        hiddenSubmit.type = "submit";
+                        hiddenSubmit.name = "submit_oferta";
+                        hiddenSubmit.style.display = "none";
+                        formOferta.appendChild(hiddenSubmit);
+                        hiddenSubmit.click();
+                    } else {
+                        alert("No se encontró una ubicación válida. Por favor selecciona una de la lista.");
+                    }
+                })
+                .catch(err => {
+                    console.error("Error buscando ubicación:", err);
+                    alert("Ocurrió un error al buscar la ubicación.");
+                });
+        });
+    });
+
+    // Slider horizontal de sugerencias
+    document.addEventListener("DOMContentLoaded", function () {
+        const slider = document.getElementById("sugerenciasSlider");
+        const prevBtn = document.getElementById("prevSugerencia");
+        const nextBtn = document.getElementById("nextSugerencia");
+
+        if (!slider || !prevBtn || !nextBtn) return;
+
+        const itemsPerPage = 5;
+        const totalItems = slider.children.length;
+        const maxPages = Math.ceil(Math.min(totalItems, 15) / itemsPerPage);
+        let currentPage = 0;
+
+        function updateSlider() {
+            const itemWidth = slider.children[0]?.offsetWidth || 180;
+            const gap = 16;
+            const scrollAmount = (itemWidth + gap) * itemsPerPage;
+            slider.style.transform = `translateX(-${currentPage * scrollAmount}px)`;
+
+            prevBtn.disabled = currentPage === 0;
+            nextBtn.disabled = currentPage >= maxPages - 1;
+        }
+
+        prevBtn.addEventListener("click", () => {
+            if (currentPage > 0) {
+                currentPage--;
+                updateSlider();
+            }
+        });
+
+        nextBtn.addEventListener("click", () => {
+            if (currentPage < maxPages - 1) {
+                currentPage++;
+                updateSlider();
+            }
+        });
+
+        updateSlider();
+    });
+
+</script>
+
+{% endblock %}

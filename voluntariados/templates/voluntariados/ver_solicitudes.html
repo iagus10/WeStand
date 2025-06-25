@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% load voluntariados_extras %}
+{% block content %}
+<div class="container mt-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Solicitudes para: {{ oferta.nombre }}</h3>
+    <a href="{% url 'perfil' %}" class="btn btn-outline-primary">
+      <i class="bi bi-arrow-left"></i> Volver al perfil
+    </a>
+  </div>
+
+  {% if not oferta.finalizado %}
+    <form method="post" action="{% url 'finalizar_voluntariado' oferta.id %}" class="mb-4">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Finalizar voluntariado</button>
+    </form>
+  {% endif %}
+
+  {% for estado, lista in agrupadas %}
+    <h5 class="mt-4">{{ estado }}</h5>
+    {% if lista %}
+      <ul class="list-group mb-4">
+        {% for solicitud in lista %}
+          <li class="list-group-item d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+              {% if solicitud.usuario.foto_perfil %}
+                <a href="{% url 'ver_perfil' solicitud.usuario.username %}">
+                  <img src="{{ solicitud.usuario.foto_perfil.url }}" class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
+                </a>
+              {% else %}
+                <a href="{% url 'ver_perfil' solicitud.usuario.username %}">
+                  <i class="bi bi-person-circle fs-3 me-3"></i>
+                </a>
+              {% endif %}
+              <a href="{% url 'ver_perfil' solicitud.usuario.username %}" class="text-dark fw-semibold text-decoration-none">
+                {{ solicitud.usuario.username }}
+              </a>
+            </div>
+            <div class="d-flex flex-column align-items-end">
+              <span class="badge bg-secondary mb-2">
+                {{ solicitud.fecha_participacion|date:"d/m/Y H:i" }}
+              </span>
+
+              {% if solicitud.estado == 'pendiente' %}
+                <form method="post" action="{% url 'gestionar_solicitud' solicitud.id %}">
+                  {% csrf_token %}
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button type="submit" name="accion" value="aceptar" class="btn btn-success">Aceptar</button>
+                    <button type="submit" name="accion" value="rechazar" class="btn btn-danger">Rechazar</button>
+                  </div>
+                </form>
+              {% elif solicitud.estado == 'aceptado' and not solicitud.finalizado %}
+                <form method="post" action="{% url 'finalizar_participacion' solicitud.id %}" class="mt-2">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-dark btn-sm">Finalizar participación</button>
+                </form>
+                <form method="post" action="{% url 'expulsar_participante' solicitud.id %}" class="mt-2">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-danger btn-sm">Expulsar</button>
+                </form>
+              {% elif solicitud.estado == 'expulsado' %}
+                <span class="text-danger small mt-2">Participante expulsado</span>
+                <form method="post" action="{% url 'readmitir_participante' solicitud.id %}" class="mt-2">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-success btn-sm">Readmitir</button>
+                </form>
+              {% elif solicitud.estado == 'rechazado' %}
+                <form method="post" action="{% url 'readmitir_participante' solicitud.id %}" class="mt-2">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-success btn-sm">Readmitir</button>
+                </form>
+              {% elif solicitud.finalizado %}
+                <span class="text-success small mt-2">Participación finalizada</span>
+
+                {% with valor=valoraciones_dict|lookup:solicitud.usuario.id %}
+                  {% if valor %}
+                    <div class="text-start mt-2">
+                      <div class="text-warning mb-1">
+                        {% for i in "12345"|make_list %}
+                          {% if forloop.counter <= valor.estrellas %}
+                            <i class="bi bi-star-fill"></i>
+                          {% else %}
+                            <i class="bi bi-star text-secondary"></i>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                      {% if valor.comentario %}
+                        <p class="text-muted mb-0">{{ valor.comentario }}</p>
+                      {% endif %}
+                      <small class="text-muted">Valorado</small>
+                    </div>
+                  {% else %}
+                    <form method="post" action="{% url 'valorar_voluntario' solicitud.id %}" class="mt-2">
+                      {% csrf_token %}
+                      <div class="d-flex align-items-center gap-2">
+                        <select name="estrellas" class="form-select form-select-sm" style="width: auto;">
+                          {% for i in "12345"|make_list %}
+                            <option value="{{ i }}">{{ i }} ⭐</option>
+                          {% endfor %}
+                        </select>
+                        <input type="text" name="comentario" placeholder="Comentario (opcional)" class="form-control form-control-sm">
+                        <button type="submit" class="btn btn-primary btn-sm">Valorar</button>
+                      </div>
+                    </form>
+                  {% endif %}
+                {% endwith %}
+              {% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted">No hay solicitudes en esta sección.</p>
+    {% endif %}
+  {% endfor %}
+
+  
+  {% if valoraciones_recibidas %}
+    <hr class="mt-5">
+    <h5>Valoraciones recibidas por los voluntarios:</h5>
+
+    <div class="mb-3 d-flex align-items-center">
+      <strong class="me-2">Valoración media:</strong>
+      <div>
+        {% with media=media_estrellas|default:0 %}
+          {% for i in "12345"|make_list %}
+            {% if forloop.counter <= media %}
+              <i class="bi bi-star-fill text-warning"></i>
+            {% else %}
+              <i class="bi bi-star text-secondary"></i>
+            {% endif %}
+          {% endfor %}
+          <span class="ms-2 text-muted">({{ media|floatformat:1 }}/5)</span>
+        {% endwith %}
+      </div>
+    </div>
+
+    <ul class="list-group mt-3" id="valoraciones-lista">
+      {% for v in valoraciones_recibidas %}
+        <li class="list-group-item d-flex align-items-start valoracion-item d-none">
+          {% if v.autor.foto_perfil %}
+            <a href="{% url 'ver_perfil' v.autor.username %}">
+              <img src="{{ v.autor.foto_perfil.url }}" class="rounded-circle me-3" style="width: 45px; height: 45px;">
+            </a>
+          {% else %}
+            <a href="{% url 'ver_perfil' v.autor.username %}">
+              <i class="bi bi-person-circle fs-3 me-3 text-muted"></i>
+            </a>
+          {% endif %}
+          <div>
+            <a href="{% url 'ver_perfil' v.autor.username %}" class="fw-semibold text-dark text-decoration-none">
+              {{ v.autor.username }}
+            </a><br>
+            <div class="mb-1 text-warning">
+              {% for i in "12345"|make_list %}
+                {% if forloop.counter <= v.estrellas %}
+                  <i class="bi bi-star-fill"></i>
+                {% else %}
+                  <i class="bi bi-star text-secondary"></i>
+                {% endif %}
+              {% endfor %}
+            </div>
+            {% if v.comentario %}
+              <p class="mb-0 text-muted">{{ v.comentario }}</p>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+
+    {% if valoraciones_recibidas|length > 1 %}
+      <div class="text-center mt-3">
+        <button class="btn btn-outline-primary" id="btn-mostrar-mas">Mostrar más</button>
+      </div>
+    {% endif %}
+  
+  {% else %}
+    <p class="text-muted">No hay valoraciones en esta sección.</p>
+  {% endif %}
+
+</div>
+
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const valoraciones = document.querySelectorAll(".valoracion-item");
+  const btnMostrar = document.getElementById("btn-mostrar-mas");
+
+  let visibles = 5;
+
+  function mostrarIniciales() {
+    valoraciones.forEach((v, i) => {
+      v.classList.toggle("d-none", i >= visibles);
+    });
+    if (valoraciones.length <= visibles) {
+      btnMostrar?.classList.add("d-none");
+    }
+  }
+
+  mostrarIniciales();
+
+  btnMostrar?.addEventListener("click", function () {
+    visibles += 5;
+    valoraciones.forEach((v, i) => {
+      if (i < visibles) {
+        v.classList.remove("d-none");
+      }
+    });
+    if (visibles >= valoraciones.length) {
+      btnMostrar.classList.add("d-none");
+    }
+  });
+});
+</script>
+
+
+{% endblock %}
